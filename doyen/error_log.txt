@@ -1,0 +1,59 @@
+[28-May-2025 07:10:33 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' at line 1 in /home/u312437937/domains/udsn.pro/public_html/php/lib.php:3029
+Stack trace:
+#0 /home/u312437937/domains/udsn.pro/public_html/php/lib.php(3029): mysqli->query()
+#1 /home/u312437937/domains/udsn.pro/public_html/doyen/p.php(222): getCodeEnseignant()
+#2 {main}
+  thrown in /home/u312437937/domains/udsn.pro/public_html/php/lib.php on line 3029
+[28-May-2025 07:11:31 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' at line 1 in /home/u312437937/domains/udsn.pro/public_html/php/lib.php:3029
+Stack trace:
+#0 /home/u312437937/domains/udsn.pro/public_html/php/lib.php(3029): mysqli->query()
+#1 /home/u312437937/domains/udsn.pro/public_html/doyen/p.php(181): getCodeEnseignant()
+#2 {main}
+  thrown in /home/u312437937/domains/udsn.pro/public_html/php/lib.php on line 3029
+[28-May-2025 07:12:22 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' at line 1 in /home/u312437937/domains/udsn.pro/public_html/php/lib.php:3029
+Stack trace:
+#0 /home/u312437937/domains/udsn.pro/public_html/php/lib.php(3029): mysqli->query()
+#1 /home/u312437937/domains/udsn.pro/public_html/doyen/p.php(181): getCodeEnseignant()
+#2 {main}
+  thrown in /home/u312437937/domains/udsn.pro/public_html/php/lib.php on line 3029
+[28-May-2025 07:13:27 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column '8O' in 'WHERE' in /home/u312437937/domains/udsn.pro/public_html/doyen/p.php:24
+Stack trace:
+#0 /home/u312437937/domains/udsn.pro/public_html/doyen/p.php(24): mysqli->query()
+#1 {main}
+  thrown in /home/u312437937/domains/udsn.pro/public_html/doyen/p.php on line 24
+[28-May-2025 07:13:44 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' at line 1 in /home/u312437937/domains/udsn.pro/public_html/php/lib.php:3029
+Stack trace:
+#0 /home/u312437937/domains/udsn.pro/public_html/php/lib.php(3029): mysqli->query()
+#1 /home/u312437937/domains/udsn.pro/public_html/doyen/p.php(222): getCodeEnseignant()
+#2 {main}
+  thrown in /home/u312437937/domains/udsn.pro/public_html/php/lib.php on line 3029
+[28-May-2025 07:14:37 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' at line 1 in /home/u312437937/domains/udsn.pro/public_html/php/lib.php:3029
+Stack trace:
+#0 /home/u312437937/domains/udsn.pro/public_html/php/lib.php(3029): mysqli->query()
+#1 /home/u312437937/domains/udsn.pro/public_html/doyen/p.php(222): getCodeEnseignant()
+#2 {main}
+  thrown in /home/u312437937/domains/udsn.pro/public_html/php/lib.php on line 3029
+[28-May-2025 07:16:12 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' at line 1 in /home/u312437937/domains/udsn.pro/public_html/php/lib.php:3029
+Stack trace:
+#0 /home/u312437937/domains/udsn.pro/public_html/php/lib.php(3029): mysqli->query()
+#1 /home/u312437937/domains/udsn.pro/public_html/doyen/p.php(222): getCodeEnseignant()
+#2 {main}
+  thrown in /home/u312437937/domains/udsn.pro/public_html/php/lib.php on line 3029
+[28-May-2025 07:16:27 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' at line 1 in /home/u312437937/domains/udsn.pro/public_html/php/lib.php:3029
+Stack trace:
+#0 /home/u312437937/domains/udsn.pro/public_html/php/lib.php(3029): mysqli->query()
+#1 /home/u312437937/domains/udsn.pro/public_html/doyen/p.php(222): getCodeEnseignant()
+#2 {main}
+  thrown in /home/u312437937/domains/udsn.pro/public_html/php/lib.php on line 3029
+[28-May-2025 07:16:46 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' at line 1 in /home/u312437937/domains/udsn.pro/public_html/php/lib.php:3029
+Stack trace:
+#0 /home/u312437937/domains/udsn.pro/public_html/php/lib.php(3029): mysqli->query()
+#1 /home/u312437937/domains/udsn.pro/public_html/doyen/p.php(218): getCodeEnseignant()
+#2 {main}
+  thrown in /home/u312437937/domains/udsn.pro/public_html/php/lib.php on line 3029
+[28-May-2025 07:17:52 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' at line 1 in /home/u312437937/domains/udsn.pro/public_html/php/lib.php:3029
+Stack trace:
+#0 /home/u312437937/domains/udsn.pro/public_html/php/lib.php(3029): mysqli->query()
+#1 /home/u312437937/domains/udsn.pro/public_html/doyen/p.php(212): getCodeEnseignant()
+#2 {main}
+  thrown in /home/u312437937/domains/udsn.pro/public_html/php/lib.php on line 3029
