@@ -26,6 +26,57 @@ function obtenirMoyenne1($connexion, $etudiant, $semestre, $examen, $annee, $eta
     return $row ?? null; // retourne ['moy' => ..., 'decision' => ...] ou null
 }
 
+function removeAccents($str) {
+    $from = ['À','Á','Â','Ã','Ä','Å','à','á','â','ã','ä','å',
+             'È','É','Ê','Ë','è','é','ê','ë',
+             'Ì','Í','Î','Ï','ì','í','î','ï',
+             'Ò','Ó','Ô','Õ','Ö','ò','ó','ô','õ','ö',
+             'Ù','Ú','Û','Ü','ù','ú','û','ü',
+             'Ý','ý','ÿ','Ç','ç','Ñ','ñ'];
+    $to   = ['A','A','A','A','A','A','a','a','a','a','a','a',
+             'E','E','E','E','e','e','e','e',
+             'I','I','I','I','i','i','i','i',
+             'O','O','O','O','O','o','o','o','o','o',
+             'U','U','U','U','u','u','u','u',
+             'Y','y','y','C','c','N','n'];
+    return str_replace($from, $to, $str);
+}
+
+// Upload handler – PV signés
+$upload_success = '';
+$upload_error   = '';
+if (isset($_POST['upload_pv'])) {
+    $pv_dir = __DIR__ . '/pv_signes/';
+    if (!is_dir($pv_dir)) mkdir($pv_dir, 0755, true);
+
+    $u_classe   = preg_replace('/[^\w\s\-]/', '', trim($_POST['u_classe']   ?? ''));
+    $u_semestre = preg_replace('/[^\w\s\-]/', '', trim($_POST['u_semestre'] ?? ''));
+    $u_examen   = in_array(trim($_POST['u_examen'] ?? ''), ['ordinaire','rattrapage'])
+                    ? trim($_POST['u_examen']) : '';
+    $u_annee    = preg_replace('/[^\w\-]/', '', trim($_POST['u_annee'] ?? ''));
+    $u_etab     = preg_replace('/[^\w\s\-]/', '', $_SESSION['etablissement'] ?? '');
+
+    if (!empty($_FILES['pv_file']['name']) && $_FILES['pv_file']['error'] === UPLOAD_ERR_OK) {
+        $ext = strtolower(pathinfo($_FILES['pv_file']['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, ['pdf','jpg','jpeg','png'])) {
+            $sanitize = fn($s) => str_replace([' ','/','\\'], '_', $s);
+            $safe_name = implode('__', [
+                $sanitize($u_etab), $sanitize($u_classe),
+                $sanitize($u_semestre), $u_examen, $sanitize($u_annee),
+            ]) . '.' . $ext;
+            if (move_uploaded_file($_FILES['pv_file']['tmp_name'], $pv_dir . $safe_name)) {
+                $upload_success = "PV signé importé avec succès.";
+            } else {
+                $upload_error = "Erreur lors de l'importation. Vérifiez les permissions du dossier.";
+            }
+        } else {
+            $upload_error = "Format non autorisé. Acceptés : PDF, JPG, PNG.";
+        }
+    } else {
+        $upload_error = "Aucun fichier sélectionné ou erreur d'upload.";
+    }
+}
+
 /* ═══════════════════════════════════════════════════════════
    MODE IMPRESSION : PHP génère uniquement la page imprimable
    ═══════════════════════════════════════════════════════════ */
@@ -206,10 +257,10 @@ if (isset($_POST['imprimer'])) {
   }
 
   .header-row    { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
-  .header-left   { flex:1; text-align:left; }
+  .header-left   { flex:1; text-align:center; }
   .header-center { flex:0 0 auto; text-align:center; padding:0 16px; }
   .header-right  { flex:1; text-align:right; }
-  .h-univ  { font-size:12pt; font-weight:bold; text-transform:uppercase; margin-bottom:3px; }
+  .h-univ  { font-size:12pt; font-weight:bold; text-transform:uppercase; margin-bottom:3px; white-space:nowrap; }
   .h-dir   { font-size:10pt; margin-bottom:2px; }
   .h-serv  { font-size:9pt; }
   .h-devise{ font-size:12pt; margin-bottom:3px; }
@@ -248,13 +299,13 @@ if (isset($_POST['imprimer'])) {
 
   .membres-title { font-weight:bold; font-size:11pt; margin-bottom:6px; }
   .membres-list  { margin:0; padding-left:18px; font-size:10.5pt; }
-  .membres-list li{ margin-bottom:3px; }
+  .membres-list li{ margin-bottom:10px; }
 
   .sig-title { font-weight:bold; font-size:11pt; margin-bottom:4px; }
   .sig-name  { font-size:11pt; margin-top:28px; }
 
   @media print {
-    @page { size: A4 landscape; margin: 14mm 16mm; }
+    @page { size: A4 portrait; margin: 14mm 16mm; }
     .no-print { display:none !important; }
     .page { width:100%; margin:0; padding:0; min-height:auto; }
     .table-admis thead tr { background:#2c3e50 !important; color:#fff !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -278,9 +329,8 @@ if (isset($_POST['imprimer'])) {
     <div class="header-left">
       <div class="h-univ">UNIVERSITE DENIS SASSOU-N'GUESSO</div>
       <div class="h-dir">VICE-PRESIDENCE</div>
-      <div class="h-dir"><?php echo strtoupper(htmlspecialchars($etab)); ?></div>
-      <div class="h-dir">Direction des examens et concours</div>
-      <div class="h-serv">Service de la scolarité et des examens</div>
+      <div class="h-dir"><?php echo htmlspecialchars(removeAccents(mb_strtoupper($etab, 'UTF-8'))); ?></div>
+      <div class="h-serv">SERVICE DE LA SCOLARITE ET DES EXAMENS</div>
     </div>
     <div class="header-center">
       <img src="../images/univ.png" alt="Logo" style="max-height:80px;">
@@ -308,14 +358,14 @@ if (isset($_POST['imprimer'])) {
   <!-- Texte d'introduction -->
   <?php if ($type_liste === 'valides'): ?>
   <p class="intro-text">
-    Ont validé sous réserve de réclamations le <strong><?php echo htmlspecialchars(strtolower($semestre)); ?></strong>
-    à la <strong><?php echo htmlspecialchars(strtolower($examen_label)); ?></strong>,
+    Ont validé le <strong><?php echo htmlspecialchars(ucfirst(strtolower($semestre))); ?></strong>
+    à la <strong><?php echo htmlspecialchars(ucfirst(strtolower($examen_label))); ?></strong>,
     et par ordre de mérite, les étudiants dont les noms et prénoms suivent :
   </p>
   <?php else: ?>
   <p class="intro-text">
-    Sont déclarés <strong>ajournés</strong> au <strong><?php echo htmlspecialchars(strtolower($semestre)); ?></strong>
-    à la <strong><?php echo htmlspecialchars(strtolower($examen_label)); ?></strong>,
+    Sont déclarés <strong>ajournés</strong> au <strong><?php echo htmlspecialchars(ucfirst(strtolower($semestre))); ?></strong>
+    à la <strong><?php echo htmlspecialchars(ucfirst(strtolower($examen_label))); ?></strong>,
     et par ordre alphabétique, les étudiants dont les noms et prénoms suivent :
   </p>
   <?php endif; ?>
@@ -329,7 +379,7 @@ if (isset($_POST['imprimer'])) {
         <th>Prénom(s)</th>
         <th>Date et lieu de naissance</th>
         <th>Bac</th>
-        <th>Sexe</th>
+        <th>Genre</th>
         <th>Moyenne</th>
         <th>Mention</th>
       </tr>
@@ -613,6 +663,134 @@ if (isset($_POST['imprimer'])) {
                                 </p>
 
                             </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Section Import PV signés ── -->
+            <div class="row justify-content-center mt-4">
+                <div class="col-xl-9 col-lg-11">
+                    <div class="card shadow-sm">
+                        <div class="card-header" style="background:#2c3e50; color:#fff;">
+                            <h4 class="card-title mb-0" style="color:#fff;">
+                                <i class="fa fa-upload mr-2"></i>Importer un PV signé
+                            </h4>
+                        </div>
+                        <div class="card-body">
+
+                            <?php if ($upload_success): ?>
+                            <div class="alert alert-success"><i class="fa fa-check mr-2"></i><?php echo htmlspecialchars($upload_success); ?></div>
+                            <?php endif; ?>
+                            <?php if ($upload_error): ?>
+                            <div class="alert alert-danger"><i class="fa fa-times mr-2"></i><?php echo htmlspecialchars($upload_error); ?></div>
+                            <?php endif; ?>
+
+                            <form method="post" enctype="multipart/form-data" id="formUpload">
+                                <div class="row">
+                                    <div class="form-group col-md-3">
+                                        <label>Classe <span style="color:#dc3545">*</span></label>
+                                        <select class="form-control" name="u_classe" required>
+                                            <option value="">— Choisir —</option>
+                                            <?php
+                                            $res2 = $connexion->query("SELECT libelle FROM classe ORDER BY libelle");
+                                            if ($res2) while ($r2 = $res2->fetch_assoc()) {
+                                                $lib2 = htmlspecialchars(str_replace("+", "'", $r2['libelle']));
+                                                echo "<option value=\"$lib2\">$lib2</option>";
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label>Semestre <span style="color:#dc3545">*</span></label>
+                                        <select class="form-control" name="u_semestre" required>
+                                            <option value="">— Choisir —</option>
+                                            <?php
+                                            $res3 = $connexion->query("SELECT libelle FROM semestre");
+                                            if ($res3) while ($r3 = $res3->fetch_assoc()) {
+                                                $lib3 = htmlspecialchars(str_replace("+", "'", $r3['libelle']));
+                                                echo "<option value=\"$lib3\">$lib3</option>";
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label>Type d'examen <span style="color:#dc3545">*</span></label>
+                                        <select class="form-control" name="u_examen" required>
+                                            <option value="">— Choisir —</option>
+                                            <option value="ordinaire">Session Ordinaire</option>
+                                            <option value="rattrapage">Session de Rattrapage</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label>Année académique <span style="color:#dc3545">*</span></label>
+                                        <select class="form-control" name="u_annee" required>
+                                            <option value="">— Choisir —</option>
+                                            <?php
+                                            $res4 = $connexion->query("SELECT libelle FROM annee ORDER BY libelle DESC");
+                                            if ($res4) while ($r4 = $res4->fetch_assoc()) {
+                                                $lib4 = htmlspecialchars(str_replace("+", "'", $r4['libelle']));
+                                                echo "<option value=\"$lib4\">$lib4</option>";
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-12">
+                                        <label>Fichier PV signé <span style="color:#dc3545">*</span> <small class="text-muted">(PDF, JPG ou PNG)</small></label>
+                                        <input type="file" class="form-control-file" name="pv_file" accept=".pdf,.jpg,.jpeg,.png" required>
+                                    </div>
+                                </div>
+                                <button type="submit" name="upload_pv" class="btn btn-dark">
+                                    <i class="fa fa-upload mr-2"></i>Importer
+                                </button>
+                            </form>
+
+                            <?php
+                            $pv_dir = __DIR__ . '/pv_signes/';
+                            $etab_san = str_replace([' ','/','\\'], '_', preg_replace('/[^\w\s\-]/', '', $_SESSION['etablissement'] ?? ''));
+                            $files = is_dir($pv_dir)
+                                ? glob($pv_dir . $etab_san . '__*.{pdf,jpg,jpeg,png}', GLOB_BRACE)
+                                : [];
+                            if (!empty($files)):
+                            ?>
+                            <hr>
+                            <h6 class="mt-3 mb-3"><i class="fa fa-folder-open mr-2"></i>PV signés importés</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered table-hover">
+                                    <thead class="thead-dark">
+                                        <tr>
+                                            <th>Classe</th><th>Semestre</th><th>Session</th>
+                                            <th>Année</th><th>Date import</th><th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php foreach (array_reverse($files) as $f):
+                                        $parts = explode('__', pathinfo($f, PATHINFO_FILENAME));
+                                        $fc  = htmlspecialchars(str_replace('_', ' ', $parts[1] ?? ''));
+                                        $fs  = htmlspecialchars(str_replace('_', ' ', $parts[2] ?? ''));
+                                        $fe  = ($parts[3] ?? '') === 'ordinaire' ? 'Session Ordinaire' : 'Session de Rattrapage';
+                                        $fa  = htmlspecialchars(str_replace('_', ' ', $parts[4] ?? ''));
+                                        $fd  = date('d/m/Y H:i', filemtime($f));
+                                        $url = htmlspecialchars('pv_signes/' . basename($f));
+                                    ?>
+                                    <tr>
+                                        <td><?php echo $fc; ?></td>
+                                        <td><?php echo $fs; ?></td>
+                                        <td><?php echo $fe; ?></td>
+                                        <td><?php echo $fa; ?></td>
+                                        <td><?php echo $fd; ?></td>
+                                        <td>
+                                            <a href="<?php echo $url; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                <i class="fa fa-eye mr-1"></i>Ouvrir
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <?php endif; ?>
+
                         </div>
                     </div>
                 </div>

@@ -166,14 +166,14 @@ foreach ($etudiants as $et) {
 
         $sql_code = "
             SELECT numero FROM anonymat
-            WHERE etudiant = '$insc_id'
-              AND ecue     = '$ec_sql'
-              AND classe   = '$cl_sql'
-              AND semestre = '$semestre_sql'
-              AND type     = 'Session de Rappel'
-              AND nature   = '$na_sql'
-              AND annee    = '$annee_sql'
-              AND etab     = '$etablissement'
+            WHERE etudiant  = '$insc_id'
+              AND code_ecue = '$ec_sql'
+              AND classe    = '$cl_sql'
+              AND semestre  = '$semestre_sql'
+              AND type      = 'Session de Rappel'
+              AND nature    = '$na_sql'
+              AND annee     = '$annee_sql'
+              AND etab      = '$etablissement'
             LIMIT 1
         ";
         $res_code      = $connexion->query($sql_code);

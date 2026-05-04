@@ -258,8 +258,6 @@ $avg = ($row['moyenne']) !== null ? $row['moyenne'] : null ; // ←
     <link rel="stylesheet" href="../css/style.css">
 	<link rel="stylesheet" href="../css/skin.css">
 	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="../vendor/datatables/css/jquery.dataTables.min.css" rel="stylesheet">
-    
     <style>
         .bulk-entry-form {
             background: #f8f9fa;
@@ -474,64 +472,7 @@ $avg = ($row['moyenne']) !== null ? $row['moyenne'] : null ; // ←
                     </div>
                 </div>
 
-                <!-- EXISTING GRADES LIST -->
-				<div class="row">
-					<div class="col-lg-12">
-						<div class="card">
-							<div class="card-header">
-								<h4 class="card-title"><i class="fas fa-list-alt"></i> Notes déjà enregistrées</h4>
-							</div>
-							<div class="card-body">
-								<div class="table-responsive">
-									<table id="example3" class="display" style="min-width: 845px">
-										<thead>
-											<tr>
-												<th>N°</th>
-												<th>Code Anonymat</th>
-                                                <th>Classe</th>
-                                                <th>Ecue</th>
-												<th>Examen</th>
-												<th>Nature</th>
-												<th>Note</th>
-                                                <th>Semestre</th>
-                                                <th>Année scolaire</th>
-												<th>Action</th>
-											</tr>
-										</thead>
-										<tbody>
-                                          <?php 
-                                                 $sql ="select * from ligne1   where  user_id=".$_SESSION["id_user"];
 
-                                                 $resultat =$connexion->query($sql);
-                                                 while($ue=$resultat ->fetch_assoc()){
-                                          ?>
-											<tr>
-												<td><?php echo $ue['id'];?></td>
-                                                <td><?php echo $ue['anonymat'];?></td>
-                                                <td><?php echo getClasseByAnonymat($ue['nature'],$ue['type_examen'],$ue['anonymat'], $ue['code_ecue'],$ue['annee'], $ue['semestre'],$connexion,$_SESSION['etablissement']);?></td>
-												<td><?php echo str_replace("+","'",$ue['ecue']);?></td>
-												<td><?php echo $ue['type_examen'];?></td>
-													<td><?php echo $ue['nature'];?></td>
-                                                <td><strong><?php echo $ue['note'];?></strong></td>
-                                                <td><?php echo $ue['semestre'];?></td>
-                                                <td><?php echo $ue['annee'];?></td>			
-												<td>			
-                                                   <a href="notation1?sup=<?php echo $ue['id'];?>&examen=<?php echo $ue['type_examen']?>&ecue=<?php echo $ue['code_ecue']?>&nature=<?php echo $ue['nature'];?>&code=<?php echo $ue['anonymat'];?>&annee=<?php echo $ue['annee']?>" 
-                                                      class="btn btn-sm btn-danger" 
-                                                      onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette note?');">
-                                                      <i class="la la-trash-o"></i>Supprimer
-                                                   </a>
-                                                </td>												
-											</tr>
-                                            <?php }?>
-										</tbody>
-									</table>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				
             </div>
         </div>
 
@@ -568,9 +509,6 @@ $avg = ($row['moyenne']) !== null ? $row['moyenne'] : null ; // ←
     <script src="../js/dashboard/dashboard-2.js"></script>
     <script src="../vendor/svganimation/vivus.min.js"></script>
     <script src="../vendor/svganimation/svg.animation.js"></script>
-    <script src="../vendor/datatables/js/jquery.dataTables.min.js"></script>
-    <script src="../js/plugins-init/datatables.init.js"></script>
-
     <script>
     $(document).ready(function() {
         // Show message modal if needed
@@ -638,7 +576,7 @@ $avg = ($row['moyenne']) !== null ? $row['moyenne'] : null ; // ←
                         tbody += '<tr class="student-row">';
                         tbody += '<td>' + (index + 1) + '</td>';
                         tbody += '<td>' + student.anonymat + '</td>';
-                        tbody += '<td><input type="number" class="form-control grade-input" name="grades[' + student.anonymat + ']" min="0" max="20" step="0.25" value="' + existingGrade + '" placeholder="0-20"></td>';
+                        tbody += '<td><input type="number" class="form-control grade-input" name="grades[' + student.anonymat + ']" min="0" max="20" step="0.01" value="' + existingGrade + '" placeholder="0-20"></td>';
                         tbody += '</tr>';
                     });
 

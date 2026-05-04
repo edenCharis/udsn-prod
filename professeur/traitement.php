@@ -1,6 +1,8 @@
 <?php
-// Démarrage de la session en tout premier
 session_start();
+// Interface désactivée — les notes passent par notation1/notation2 + ligne1/ligne2
+header("Location: index?erreur=" . urlencode("Interface désactivée. Utilisez la saisie par anonymat."));
+exit;
 
 // Inclusions après le démarrage de la session
 include '../php/connexion.php';

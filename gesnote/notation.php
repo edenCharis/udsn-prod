@@ -202,16 +202,16 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="gesnote"){
 
                     <div class="form-group">
                         <label for="nouveauMoyDev">Moyenne Devoir</label>
-                        <input type="number" min="0" step="0.25" max="20" class="form-control" id="nouveauMoyDev" name="nouveauMoyDev" >
+                        <input type="number" min="0" step="0.01" max="20" class="form-control" id="nouveauMoyDev" name="nouveauMoyDev" >
                     </div>
 
                     <div class="form-group">
                         <label for="nouveauMoyEx">Moyenne Examen</label>
-                        <input type="number" min="0"  step="0.25" max="20" class="form-control" id="nouveauMoyEx" name="nouveauMoyEx" >
+                        <input type="number" min="0"  step="0.01" max="20" class="form-control" id="nouveauMoyEx" name="nouveauMoyEx" >
                     </div>
                     <div class="form-group">
                         <label for="sessionrappel">Session de rappel</label>
-                        <input type="number" min="0" step="0.25" max="20" class="form-control" id="sessionrappel" name="nouveausession" >
+                        <input type="number" min="0" step="0.01" max="20" class="form-control" id="sessionrappel" name="nouveausession" >
                     </div>
                      <button type="submit" class="btn btn-success">Sauvegarder</button>
                     <button  class="btn btn-danger">Annuler</button>
@@ -301,7 +301,7 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="gesnote"){
                     </div>
                     <div class="form-group">
                         <label for="moydev">Moyenne Devoir </label>
-                        <input type="number" min="0" step="0.25" max="20" class="form-control" id="moydev" name="moydev" required>
+                        <input type="number" min="0" step="0.01" max="20" class="form-control" id="moydev" name="moydev" required>
                     </div>
                     <div class="form-group">
                         <label for="moyex">Moyenne Examen </label>

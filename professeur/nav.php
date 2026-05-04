@@ -23,8 +23,8 @@
                     <span class="nav-text">Gestion des notes</span>
                 </a>
                 <ul aria-expanded="false">
-                    <li><a href="filtre1">Enregistrer note examen</a></li>
-                    <li><a href="filtre2">Enregistrer note devoir</a></li>
+                    <li><a href="notation1">Enregistrer note examen</a></li>
+                    <li><a href="notation2">Enregistrer note devoir</a></li>
                 </ul>
             </li>
             

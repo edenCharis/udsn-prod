@@ -620,6 +620,8 @@ if (preg_match('/^Première\s+année$/i', trim($niveau))) {
                     ? number_format(array_sum($vals_ord)  / count($vals_ord),  2, ',', '') : 'X';
                 $note_ue_ratt = count($vals_ratt) > 0
                     ? number_format(array_sum($vals_ratt) / count($vals_ratt), 2, ',', '') : 'X';
+
+                if ($note_ue_ratt !== 'X') $note_ue_ord = 'X';
         ?>
             <tr>
                 <td class="code-ue"><?php echo htmlspecialchars($ue->code); ?></td>

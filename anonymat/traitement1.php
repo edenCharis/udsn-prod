@@ -76,14 +76,13 @@ if(isset($_POST['etudiant']) && isset($_POST['ecue']) && isset($_POST['classe'])
     }
     
     // Check if this student already has an anonymous code for this exam
-    $check_existing = "SELECT numero FROM anonymat 
-                      WHERE etudiant = '$etudiant' 
-                      AND ecue = '$ecue' 
-                      AND classe = '$classe' 
-                      AND semestre = '$semestre' 
-                      AND type = '$examen' 
+    $check_existing = "SELECT numero FROM anonymat
+                      WHERE etudiant = '$etudiant'
+                      AND code_ecue = '$ecue'
+                      AND classe = '$classe'
+                      AND semestre = '$semestre'
+                      AND type = '$examen'
                       AND annee = '$annee'
-                     
                       AND etab = '$etab'";
     
     if($nature !== '') {
@@ -98,8 +97,8 @@ if(isset($_POST['etudiant']) && isset($_POST['ecue']) && isset($_POST['classe'])
         exit;
     }
     
-    // Get ECUE details for specialite
-    $sql_ecue = "SELECT specialite FROM ecue e JOIN ue u ON e.code_ue = u.code 
+    // Get ECUE details for specialite and libelle
+    $sql_ecue = "SELECT specialite, e.libelle FROM ecue e JOIN ue u ON e.code_ue = u.code
                  WHERE e.code_ecue = '$ecue' AND e.etab = '$etab'";
     $result_ecue = $connexion->query($sql_ecue);
     
@@ -108,15 +107,16 @@ if(isset($_POST['etudiant']) && isset($_POST['ecue']) && isset($_POST['classe'])
         exit;
     }
     
-    $ecue_data = $result_ecue->fetch_assoc();
-    $specialite = $ecue_data['specialite'];
-    
+    $ecue_data    = $result_ecue->fetch_assoc();
+    $specialite   = $ecue_data['specialite'];
+    $ecue_libelle = $ecue_data['libelle'] ?? $ecue;
+
     // Get existing codes to generate new ones
-    $sql_codes = "SELECT numero FROM anonymat 
-                  WHERE ecue = '$ecue' 
-                  AND classe = '$classe' 
-                  AND semestre = '$semestre' 
-                  AND type = '$examen' 
+    $sql_codes = "SELECT numero FROM anonymat
+                  WHERE code_ecue = '$ecue'
+                  AND classe = '$classe'
+                  AND semestre = '$semestre'
+                  AND type = '$examen'
                   AND annee = '$annee'
                   AND etab = '$etab'";
     $resultat_codes = $connexion->query($sql_codes);
@@ -137,18 +137,18 @@ if(isset($_POST['etudiant']) && isset($_POST['ecue']) && isset($_POST['classe'])
     $code = $available_codes[0];
     
     // Insert anonymat record
-    $sql = "INSERT INTO anonymat (etudiant, classe, specialite, numero, type, ecue, user, annee, semestre, etab";
-    
-    if($nature !== '') {
+    $sql = "INSERT INTO anonymat (etudiant, classe, specialite, numero, type, ecue, code_ecue, user, annee, semestre, etab";
+
+    if ($nature !== '') {
         $sql .= ", nature";
     }
-    
-    $sql .= ") VALUES ('$etudiant', '$classe', '$specialite', '$code', '$examen', '$ecue', '$agent', '$annee', '$semestre', '$etab'";
-    
-    if($nature !== '') {
+
+    $sql .= ") VALUES ('$etudiant', '$classe', '$specialite', '$code', '$examen', '$ecue_libelle', '$ecue', '$agent', '$annee', '$semestre', '$etab'";
+
+    if ($nature !== '') {
         $sql .= ", '$nature'";
     }
-    
+
     $sql .= ")";
     
     if($connexion->query($sql)) {

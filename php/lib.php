@@ -977,7 +977,7 @@ function getSemestreByAnonymat(
         FROM anonymat
         WHERE type = ?
           AND numero = ?
-          AND ecue = ?
+          AND code_ecue = ?
           AND annee = ?
           AND etab = ?
           AND nature = ?
@@ -1027,7 +1027,7 @@ function getClasseByAnonymat(
         FROM anonymat
         WHERE type = ?
           AND numero = ?
-          AND ecue = ?
+          AND code_ecue = ?
           AND annee = ?
           AND semestre = ?
           AND etab = ?
@@ -1134,59 +1134,43 @@ function getParcours($spec, $connexion) {
 
 
 function getNoteDevoir($connexion, $etudiant, $semestre, $annee, $code_ecue) {
-    try {
-        $sql = "SELECT moyDev FROM notation 
-                WHERE inscription = " . $connexion->real_escape_string($etudiant) . "
-                AND semestre = '" . $connexion->real_escape_string($semestre) . "' 
-                AND annee = '" . $connexion->real_escape_string($annee) . "' 
-                AND code_ecue = '" . $connexion->real_escape_string($code_ecue) . "'
-                LIMIT 1";
-        
-        $result = $connexion->query($sql);
-        
-        if (!$result) {
-            throw new Exception("Erreur SQL getNoteDevoir: " . $connexion->error);
-        }
-        
-        if ($result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            return floatval($row['moyDev']);
-        }
-        
-        return "-";
-        
-    } catch (Exception $e) {
-        error_log("Erreur getNoteDevoir: " . $e->getMessage());
-        throw $e;
-    }
+    $stmt = $connexion->prepare(
+        "SELECT ROUND(AVG(note), 2) AS moy
+         FROM ligne2
+         WHERE etudiant  = ?
+           AND code_ecue = ?
+           AND semestre  = ?
+           AND annee     = ?"
+    );
+    $stmt->bind_param('isss', $etudiant, $code_ecue, $semestre, $annee);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($row['moy'] !== null) return floatval($row['moy']);
+    return "-";
 }
 
 function getNoteExamen($connexion, $etudiant, $semestre, $annee, $code_ecue) {
-    try {
-        $sql = "SELECT moyEx FROM notation 
-                WHERE inscription = '" . $connexion->real_escape_string($etudiant) . "' 
-                AND semestre = '" . $connexion->real_escape_string($semestre) . "' 
-                AND annee = '" . $connexion->real_escape_string($annee) . "' 
-                AND code_ecue ='" . $connexion->real_escape_string($code_ecue) . "'
-                LIMIT 1";
-        
-        $result = $connexion->query($sql);
-        
-        if (!$result) {
-            throw new Exception("Erreur SQL getNoteExamen: " . $connexion->error);
-        }
-        
-        if ($result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            return floatval($row['moyEx']);
-        }
-        
-        return "-";
-        
-    } catch (Exception $e) {
-        error_log("Erreur getNoteExamen: " . $e->getMessage());
-        throw $e;
-    }
+    $stmt = $connexion->prepare(
+        "SELECT ROUND(AVG(l.note), 2) AS moy
+         FROM ligne1 l
+         JOIN anonymat a ON a.numero    = l.anonymat
+                        AND a.code_ecue = l.code_ecue
+                        AND a.annee     = l.annee
+                        AND a.semestre  = l.semestre
+                        AND a.type      = l.type_examen
+         WHERE l.code_ecue   = ?
+           AND l.semestre    = ?
+           AND l.annee       = ?
+           AND l.type_examen = 'Session Ordinaire'
+           AND a.etudiant    = ?"
+    );
+    $stmt->bind_param('sssi', $code_ecue, $semestre, $annee, $etudiant);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($row['moy'] !== null) return floatval($row['moy']);
+    return "-";
 }
 
 function getNoteRattrapage($conn, $etudiant, $semestre, $annee, $ecue) {
@@ -2232,47 +2216,46 @@ function getPrenomEtudiant($id,$connexion,$etablissement){
 
 
 function getEtudiantCC($etudiant,$connexion,$etablissement,$semestre,$ecue,$annee){
-
-    $sql ="select moyDev from notation where inscription='$etudiant' and etab='$etablissement' and semestre='$semestre' and (ecue='$ecue' or code_ecue='$ecue') and annee='$annee'";
-    $result = $connexion->query($sql);
-
-         if ($result->num_rows > 0) {
-           $row = $result->fetch_assoc();
-                 
-
-           if($row['moyDev'] !== null){
-            return round($row['moyDev'],2) ;
-           }else{
-            return 0;
-           }
-        
-      } else{
-
-         return 0;
-
-      }
+    $stmt = $connexion->prepare(
+        "SELECT ROUND(AVG(note), 2) AS moy
+         FROM ligne2
+         WHERE etudiant  = ?
+           AND code_ecue = ?
+           AND semestre  = ?
+           AND annee     = ?
+           AND etab      = ?"
+    );
+    $stmt->bind_param('issss', $etudiant, $ecue, $semestre, $annee, $etablissement);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($row['moy'] !== null) return round((float)$row['moy'], 2);
+    return 0;
 }
 
 function getEtudiantEXT($etudiant,$connexion,$etablissement,$semestre,$ecue,$annee){
-
-    $sql ="select moyEx from notation where inscription='$etudiant' and etab='$etablissement' and semestre='$semestre' and (ecue='$ecue' or code_ecue='$ecue') and annee='$annee'";
-    $result = $connexion->query($sql);
-
-         if ($result->num_rows > 0) {
-           $row = $result->fetch_assoc();
-
-           if($row['moyEx'] !== null){
-            return round($row['moyEx'],2) ;
-           }else{
-            return 0;
-           }
-
-        
-      } else{
-
-          return 0;
-
-      }
+    $stmt = $connexion->prepare(
+        "SELECT ROUND(AVG(l.note), 2) AS moy
+         FROM ligne1 l
+         JOIN anonymat a ON a.numero    = l.anonymat
+                        AND a.code_ecue = l.code_ecue
+                        AND a.annee     = l.annee
+                        AND a.semestre  = l.semestre
+                        AND a.etab      = l.etab
+                        AND a.type      = l.type_examen
+         WHERE l.code_ecue   = ?
+           AND l.semestre    = ?
+           AND l.annee       = ?
+           AND l.etab        = ?
+           AND l.type_examen = 'Session Ordinaire'
+           AND a.etudiant    = ?"
+    );
+    $stmt->bind_param('ssssi', $ecue, $semestre, $annee, $etablissement, $etudiant);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($row['moy'] !== null) return round((float)$row['moy'], 2);
+    return 0;
 }
 
 function countUE($specialite,$etablissement,$niveau,$connexion){
@@ -2294,26 +2277,28 @@ function countUE($specialite,$etablissement,$niveau,$connexion){
 }
 
 function getEtudiantRattrapage($etudiant,$connexion,$etablissement,$semestre,$ecue,$annee){
-
-    $sql ="select session_rappel from notation where inscription='$etudiant' and etab='$etablissement' and semestre='$semestre' and (ecue='$ecue' or code_ecue='$ecue') and annee='$annee'";
-    $result = $connexion->query($sql);
-
-         if ($result->num_rows > 0) {
-           $row = $result->fetch_assoc();
-
-
-           if($row['session_rappel'] !== null){
-            return round($row['session_rappel'],2) ;
-           }else{
-            return "-";
-           }
-
-         
-      } else{
-
-        return "-";
-
-      }
+    $stmt = $connexion->prepare(
+        "SELECT ROUND(AVG(l.note), 2) AS moy
+         FROM ligne1 l
+         JOIN anonymat a ON a.numero    = l.anonymat
+                        AND a.code_ecue = l.code_ecue
+                        AND a.annee     = l.annee
+                        AND a.semestre  = l.semestre
+                        AND a.etab      = l.etab
+                        AND a.type      = l.type_examen
+         WHERE l.code_ecue   = ?
+           AND l.semestre    = ?
+           AND l.annee       = ?
+           AND l.etab        = ?
+           AND l.type_examen = 'Session de Rappel'
+           AND a.etudiant    = ?"
+    );
+    $stmt->bind_param('ssssi', $ecue, $semestre, $annee, $etablissement, $etudiant);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($row['moy'] !== null) return round((float)$row['moy'], 2);
+    return "-";
 }
 
 function getParcoursUser($id_user,$connexion){
@@ -4437,7 +4422,7 @@ function getIdInscriptionFromAnonymat(
         FROM anonymat
         WHERE numero = ?
           AND annee = ?
-          AND ecue = ?
+          AND code_ecue = ?
           AND semestre = ?
           AND etab = ?
           AND nature = ?
@@ -4666,6 +4651,20 @@ function mettreAJourNotation($connexion, $etudiant_id, $ecue, $semestre, $classe
             $stmt->bind_param("dii", $nouvelleNote, $user, $id_notation);
             $stmt->execute();
             $stmt->close();
+
+            // Recompute moyGen = (moyDev + moyEx) / 2
+            $exStmt = $connexion->prepare("SELECT moyEx FROM notation WHERE id=?");
+            $exStmt->bind_param('i', $id_notation);
+            $exStmt->execute();
+            $moyEx = $exStmt->get_result()->fetch_assoc()['moyEx'];
+            $exStmt->close();
+            if ($moyEx !== null) {
+                $moyGen = round(($nouvelleNote + $moyEx) / 2, 2);
+                $genStmt = $connexion->prepare("UPDATE notation SET moyGen=? WHERE id=?");
+                $genStmt->bind_param('di', $moyGen, $id_notation);
+                $genStmt->execute();
+                $genStmt->close();
+            }
         }
     } else {
         // CRÉATION

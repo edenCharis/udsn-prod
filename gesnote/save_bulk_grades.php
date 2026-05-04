@@ -134,73 +134,7 @@ try {
         }
         $check->close();
 
-        // ── 4. Récupération de l'inscription étudiant ────────────────────────
-        $etudiant_id = getIdInscriptionFromAnonymat(
-            $nature, $type_examen, $anonymat, $annee, $ecue, $semestre,
-            $connexion, $etablissement
-        );
-
-        if (!$etudiant_id) {
-            // DEBUG : on inclut tous les paramètres pour comprendre pourquoi introuvable
-            $errors[] = "[notation] getIdInscriptionFromAnonymat a retourné null "
-                      . "— anonymat=$anonymat | nature=$nature | type=$type_examen "
-                      . "| annee=$annee | ecue=$ecue | semestre=$semestre | etab=$etablissement";
-            $error_count++;
-            continue;
-        }
-
-        // ── 5. Calcul de la moyenne réelle (TP + Théorie) ────────────────────
-        $avgStmt = $connexion->prepare(
-            "SELECT ROUND(AVG(l.note), 2) AS moyenne
-             FROM ligne1 l
-             JOIN anonymat a
-               ON l.anonymat = a.numero
-              AND l.semestre  = a.semestre
-              AND l.annee     = a.annee
-              AND l.etab      = a.etab
-              AND l.code_ecue = a.ecue
-             WHERE l.semestre    = ?
-               AND l.annee       = ?
-               AND l.type_examen = ?
-               AND l.etab        = ?
-               AND l.code_ecue   = ?
-               AND a.etudiant    = ?"
-        );
-        $avgStmt->bind_param('sssssi',
-            $semestre, $annee, $type_examen, $etablissement, $ecue, $etudiant_id
-        );
-        $avgStmt->execute();
-        $avgRow = $avgStmt->get_result()->fetch_assoc();
-        $avgStmt->close();
-
-        $avg = $avgRow['moyenne'] ?? null;
-
-        if ($avg === null) {
-            // DEBUG : la requête AVG n'a rien trouvé — données ou jointure incorrectes
-            $errors[] = "[notation] AVG = null pour etudiant_id=$etudiant_id "
-                      . "| anonymat=$anonymat | ecue=$ecue | semestre=$semestre "
-                      . "| type=$type_examen | etab=$etablissement";
-            $error_count++;
-            continue;
-        }
-
-        /* ── 6. Mise à jour de la table notation 
-        
-        $id_notation = verifierInscriptionNotation(
-            $connexion, $etudiant_id, $ecue, $semestre, $classe, $annee
-        );
-
-        if ($id_notation === null) {
-            // DEBUG : verifierInscriptionNotation n'a pas trouvé de ligne
-            $errors[] = "[notation] verifierInscriptionNotation = null "
-                      . "→ tentative INSERT — etudiant_id=$etudiant_id | ecue=$ecue "
-                      . "| semestre=$semestre | classe=$classe | annee=$annee";
-        }
-
-        mettreAJourNotationExamen(
-            $connexion, $etudiant_id, $ecue, $semestre,
-            $classe, $annee, $type_examen, $avg, $user_id, $etablissement
-        );*/
+        // Notation update handled by update_notation.php (second AJAX step)
     }
 
     // ── Logger l'action ───────────────────────────────────────────────────────

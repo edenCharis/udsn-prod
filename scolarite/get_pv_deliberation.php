@@ -42,19 +42,22 @@ if(empty($semestre) || empty($specialite) || empty($annee) || empty($classe)) {
 }
 
 // Récupérer les UE
-$sql = "SELECT DISTINCT ue.code, libelle 
-        FROM ue 
-        WHERE ue.etab='".$etablissement."' 
-        AND specialite='".$specialite."' 
-        AND semestre='$semestre' 
+$sql = "SELECT DISTINCT ue.code, libelle
+        FROM ue
+        WHERE ue.etab='".$etablissement."'
+        AND specialite='".$specialite."'
+        AND semestre='$semestre'
         AND niveau='$niveau'";
+
+$result_ue_count_total = $connexion->query($sql);
+$nb_ue_total = $result_ue_count_total->num_rows;
 ?>
 
 <div class="pv-header">
     <h5><strong>Spécialité :</strong> <?php echo str_replace("+", "'", $specialite); ?></h5>
-    <h5><strong>Semestre :</strong> <?php echo $semestre; ?></h5>
+    <h5><strong>Semestre :</strong> <?php echo ucfirst($semestre); ?></h5>
     <h5><strong>Année universitaire :</strong> <?php echo $annee; ?></h5>
-    <h5><strong>Examen :</strong> <?php echo ucfirst($examen); ?></h5>
+    <h5><strong>Type de session :</strong> <?php echo ($examen == 'ordinaire') ? 'Session Ordinaire' : 'Session de Rattrapage'; ?></h5>
     <h5><strong>Classe :</strong> <?php echo $classe; ?></h5>
     
     <!-- Légende des couleurs -->
@@ -65,6 +68,7 @@ $sql = "SELECT DISTINCT ue.code, libelle
     <table class="table table-bordered table-striped" style="font-size: 9px;" id="pvTable" >
         <thead>
             <tr>
+                <th rowspan="3">N°</th>
                 <th rowspan="3">Nom(s) et prénom(s)</th>
                 
                 <?php 
@@ -79,7 +83,7 @@ $sql = "SELECT DISTINCT ue.code, libelle
                 <th colspan="<?php echo $colspan; ?>"><?php echo str_replace("+", "'", $data->libelle); ?></th>
                 <?php } ?>
                 
-                <th rowspan="3">UE validées sur <?php echo $result_ue->num_rows; ?></th>
+                <th rowspan="3">UE validées sur <?php echo $nb_ue_total; ?></th>
                 <th rowspan="3">Moyenne Generale</th>
                 <th rowspan="3">Appréciation</th>
                 <th rowspan="3">Decision du jury</th>
@@ -147,11 +151,12 @@ $sql = "SELECT DISTINCT ue.code, libelle
                 $num++;
             ?>
             <tr>
+                <th><?php echo $num; ?></th>
                 <th><?php echo mettrePremieresLettresMajuscules(getNomEtudiant(getCandidatCodeByInscription($etudiant->id, $connexion), $connexion, $etablissement_libelle) . "  " . getPrenomEtudiant(getCandidatCodeByInscription($etudiant->id, $connexion), $connexion, $etablissement_libelle)); ?></th>
                 
                 <?php 
-                // Tableau pour stocker les UE validées
-                $ue_validees_count = 0;
+                $toutes_moyennes_ue          = [];
+                $ue_validees_count           = 0;
                 $a_note_eliminatoire_globale = false;
                 
                 $result_ue = $connexion->query($sql);
@@ -169,48 +174,51 @@ $sql = "SELECT DISTINCT ue.code, libelle
                         $i++;
                         
                         $a = getEtudiantCC($etudiant->id, $connexion, $etablissement, $semestre, $ecue->code_ecue, $annee);
-                        
-                        if($examen == "ordinaire") {
+
+                        if ($examen == "ordinaire") {
                             $b = getEtudiantEXT($etudiant->id, $connexion, $etablissement, $semestre, $ecue->code_ecue, $annee);
                         } else {
-                            $b = getEtudiantRattrapage($etudiant->id, $connexion, $etablissement, $semestre, $ecue->code_ecue, $annee);
+                            $note_ratt = getEtudiantRattrapage($etudiant->id, $connexion, $etablissement, $semestre, $ecue->code_ecue, $annee);
+                            $b = ($note_ratt !== "-" && $note_ratt !== null && $note_ratt !== "")
+                                ? $note_ratt
+                                : getEtudiantEXT($etudiant->id, $connexion, $etablissement, $semestre, $ecue->code_ecue, $annee);
                         }
                         
                         // Calculer la moyenne de l'ECUE
-                        $moy_ecue = 0;
-                        
+                        $moy_ecue   = 0;
+                        $color_ecue = '';
+
                         if($a !== "-" && $b !== "-") {
                             $moy_ecue = ($a !== 0 || $b !== 0) ? round(($a + $b) / 2, 2) : 0;
                             $moyennes_ecue_ue[] = $moy_ecue;
-                            
-                            // Vérifier si c'est une note éliminatoire (< 6)
+
                             if($moy_ecue < 6) {
-                                $a_note_eliminatoire_ue = true;
+                                $a_note_eliminatoire_ue      = true;
                                 $a_note_eliminatoire_globale = true;
+                                $color_ecue = 'text-danger';
+                            } elseif($moy_ecue >= 10) {
+                                $color_ecue = 'text-success';
+                            } else {
+                                $color_ecue = 'text-warning';
                             }
                         }
                 ?>
                 <th style="width: 40px;"><?php echo ($a !== "-") ? $a : "-"; ?></th>
-                <th class="text-danger" style="width: 40px;"><?php echo ($b !== "-") ? $b : "-"; ?></th>
-                <th class="text-primary" style="width: 40px;"><?php echo $moy_ecue; ?></th>
+                <th style="width: 40px;"><?php echo ($b !== "-") ? $b : "-"; ?></th>
+                <th class="<?php echo $color_ecue; ?>" style="width: 40px;"><?php echo $moy_ecue; ?></th>
                 
                 <?php 
                         if($i == $result_ecue->num_rows) {
-                            // Calculer la moyenne de l'UE
                             $ue_moy = "-";
-                            
-                            if(count($moyennes_ecue_ue) > 0) {
-                                $somme_ecue = array_sum($moyennes_ecue_ue);
-                                $nb_ecue = count($moyennes_ecue_ue);
-                                $ue_moy = round($somme_ecue / $nb_ecue, 2);
-                                
-                                // Valider l'UE si moyenne >= 10 et aucune note éliminatoire
-                                if($ue_moy >= 10 && !$a_note_eliminatoire_ue) {
+                            if (count($moyennes_ecue_ue) > 0) {
+                                $ue_moy = round(array_sum($moyennes_ecue_ue) / count($moyennes_ecue_ue), 2);
+                                if ($ue_moy >= 10 && !$a_note_eliminatoire_ue) {
                                     $ue_validees_count++;
                                 }
+                                $toutes_moyennes_ue[] = $ue_moy;
                             }
                 ?>
-                <th class="text-secondary" style="width: 40px;"><?php echo $ue_moy; ?></th>
+                <th class="text-primary" style="width: 40px;"><?php echo $ue_moy; ?></th>
                 <?php 
                         }
                     }
@@ -219,97 +227,37 @@ $sql = "SELECT DISTINCT ue.code, libelle
                 
                 <th style="width: 40px;"><?php echo $ue_validees_count; ?></th>
                 
-                <th class="<?php 
-                    // Count total ECUEs and ECUEs with data
-                    $total_ecues = 0;
-                    $ecues_with_data = 0;
-                    
-                    $result_ue_count = $connexion->query($sql);
-                    while($data_count = $result_ue_count->fetch_object()) {
-                        $sql_count = "SELECT * FROM ecue WHERE code_ue='".$data_count->code."'";
-                        $result_ecue_count = $connexion->query($sql_count);
-                        
-                        while($ecue_count = $result_ecue_count->fetch_object()) {
-                            $total_ecues++;
-                            $cc = getEtudiantCC($etudiant->id, $connexion, $etablissement, $semestre, $ecue_count->libelle, $annee);
-                            
-                            if($examen == "ordinaire") {
-                                $ex = getEtudiantEXT($etudiant->id, $connexion, $etablissement, $semestre, $ecue_count->libelle, $annee);
-                            } else {
-                                $ex = getEtudiantRattrapage($etudiant->id, $connexion, $etablissement, $semestre, $ecue_count->libelle, $annee);
-                            }
-                            
-                            if($cc !== "-" && $ex !== "-") {
-                                $ecues_with_data++;
-                            }
-                        }
-                    }
-                    
-                    $percentage_complete = ($total_ecues > 0) ? ($ecues_with_data / $total_ecues) * 100 : 0;
-                    
-                    if($ecues_with_data > 0) {
-                        $tt = calcul_moyenne($etudiant->id, $semestre, $annee, $etablissement, $connexion);
-                        
-                        if($percentage_complete == 100) {
-                            echo 'text-success';
-                        } elseif($percentage_complete >= 80) {
-                            echo 'text-info';
-                        } else {
-                            echo 'text-danger';
-                        }
-                    } else {
-                        $tt = "-";
-                        echo 'text-dark';
-                    }
-                ?>" style="width: 50px;">
-                    <?php 
-                    if($ecues_with_data > 0) {
-                        echo $tt;
-                        if($percentage_complete < 100) {
-                            echo '<br><small style="font-size:8px;">(' . round($percentage_complete) . '%)</small>';
-                        }
-                    } else {
-                        echo "-";
-                    }
-                    ?>
+                <?php
+                $color_moy = 'text-dark';
+                $tt        = "-";
+                if (count($toutes_moyennes_ue) > 0) {
+                    $tt = round(array_sum($toutes_moyennes_ue) / count($toutes_moyennes_ue), 2);
+                    if ($tt >= 10)     $color_moy = 'text-success';
+                    elseif ($tt < 6)   $color_moy = 'text-danger';
+                    else               $color_moy = 'text-warning';
+                }
+                ?>
+                <th class="<?php echo $color_moy; ?>" style="width: 50px;">
+                    <?php echo ($tt !== "-") ? $tt : "-"; ?>
                 </th>
-                
+
                 <th class="text-primary" style="width: 60px;">
-                    <?php 
-                    if($tt !== "-") {
-                        echo mentionParmoyenne($tt, 2);
-                    } else {
-                        echo "-";
-                    }
-                    ?>
+                    <?php echo ($tt !== "-") ? mentionParmoyenne($tt, 2) : "-"; ?>
                 </th>
-                
+
                 <th style="width: 80px;">
                     <?php
-                    $result = "-";
-                    
-                    if($tt !== "-") {
-                        $statut = "";
-                        
-                        if($result_ue->num_rows - 1 >= 1) {
-                            $statut = statutSoutenance(round($tt, 2));
-                        }
-                        
-                        // Logique de note éliminatoire
-                        if($a_note_eliminatoire_globale) {
-                            if(stripos($statut, 'Admis') !== false) {
-                                $result = "<span class='badge badge-danger'>Note Éliminatoire</span>";
-                            } elseif(stripos($statut, 'Ajourné') !== false || stripos($statut, 'Ajourne') !== false) {
-                                $result = $statut;
-                            } else {
-                                $result = "<span class='badge badge-danger'>Note Éliminatoire</span>";
-                            }
+                    $result_decision = "-";
+                    if ($tt !== "-") {
+                        if ($tt >= 10 && $a_note_eliminatoire_globale) {
+                            $result_decision = "<span class='badge badge-danger'>Note Éliminatoire</span>";
+                        } elseif ($tt >= 10) {
+                            $result_decision = "<span class='badge badge-success'>Validé(e)</span>";
                         } else {
-                            $result = $statut;
+                            $result_decision = "<span class='badge badge-warning'>Ajourné(e)</span>";
                         }
                     }
-                    
-                    echo $result;
+                    echo $result_decision;
                     ?>
                 </th>
             </tr>

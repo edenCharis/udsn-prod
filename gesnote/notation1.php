@@ -40,7 +40,7 @@ if (isset($_GET['sup'])) {
         if (!$etudiant) throw new Exception("Inscription étudiant introuvable");
 
         // 3. Recalculer la moyenne restante dans ligne1
-        $id_notation = verifierInscriptionNotation($connexion, $etudiant, $ecue, $semestre, $classe, $annee);
+        $id_notation = verifierInscriptionNotation($connexion, $etudiant, $ecue, $semestre, $classe, $annee,$etab);
 
         if ($id_notation !== null) {
             $sql_avg = "
@@ -106,8 +106,6 @@ if (isset($_GET['sup'])) {
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/skin.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="../vendor/datatables/css/jquery.dataTables.min.css" rel="stylesheet">
-
     <style>
         .bulk-entry-form { background:#f8f9fa; padding:20px; border-radius:8px; margin-bottom:20px; }
         .grade-input { width:80px; text-align:center; }
@@ -307,64 +305,6 @@ if (isset($_GET['sup'])) {
                 </div>
             </div>
 
-            <!-- NOTES DÉJÀ ENREGISTRÉES -->
-            <div class="row">
-                <div class="col-lg-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h4 class="card-title"><i class="fas fa-list-alt"></i> Notes déjà enregistrées</h4>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table id="example3" class="display" style="min-width:845px">
-                                    <thead>
-                                        <tr>
-                                            <th>N°</th>
-                                            <th>Code Anonymat</th>
-                                            <th>Classe</th>
-                                            <th>Ecue</th>
-                                            <th>Code Ecue</th>
-                                            <th>Examen</th>
-                                            <th>Nature</th>
-                                            <th>Note</th>
-                                            <th>Semestre</th>
-                                            <th>Année scolaire</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $sql = "SELECT * FROM ligne1 ORDER BY id DESC LIMIT 1000";
-                                        $resultat = $connexion->query($sql);
-                                        while ($ue = $resultat->fetch_assoc()) {
-                                        ?>
-                                        <tr>
-                                            <td><?php echo $ue['id']; ?></td>
-                                            <td><?php echo htmlspecialchars($ue['anonymat']); ?></td>
-                                            <td><?php echo htmlspecialchars(getClasseByAnonymat($ue['nature'], $ue['type_examen'], $ue['anonymat'], $ue['code_ecue'], $ue['annee'], $ue['semestre'], $connexion, $_SESSION['etablissement'])); ?></td>
-                                            <td><?php echo htmlspecialchars(str_replace("+", "'", $ue['ecue'])); ?></td>
-                                            <td><?php echo htmlspecialchars($ue['code_ecue']); ?></td>
-                                            <td><?php echo htmlspecialchars($ue['type_examen']); ?></td>
-                                            <td><?php echo htmlspecialchars($ue['nature']); ?></td>
-                                            <td><strong><?php echo $ue['note']; ?></strong></td>
-                                            <td><?php echo htmlspecialchars($ue['semestre']); ?></td>
-                                            <td><?php echo htmlspecialchars($ue['annee']); ?></td>
-                                            <td>
-                                                <a href="notation1?sup=<?php echo $ue['id']; ?>&examen=<?php echo urlencode($ue['type_examen']); ?>&ecue=<?php echo urlencode($ue['code_ecue']); ?>&nature=<?php echo urlencode($ue['nature']); ?>&code=<?php echo urlencode($ue['anonymat']); ?>&annee=<?php echo urlencode($ue['annee']); ?>"
-                                                   class="btn btn-sm btn-danger"
-                                                   onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette note?');">
-                                                    <i class="la la-trash-o"></i> Supprimer
-                                                </a>
-                                            </td>
-                                        </tr>
-                                        <?php } ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
         </div>
     </div>
@@ -400,9 +340,6 @@ if (isset($_GET['sup'])) {
 <script src="../js/dashboard/dashboard-2.js"></script>
 <script src="../vendor/svganimation/vivus.min.js"></script>
 <script src="../vendor/svganimation/svg.animation.js"></script>
-<script src="../vendor/datatables/js/jquery.dataTables.min.js"></script>
-<script src="../js/plugins-init/datatables.init.js"></script>
-
 <script>
 $(document).ready(function () {
 
@@ -460,7 +397,7 @@ $(document).ready(function () {
                         + '<td>' + $('<span>').text(student.anonymat).html() + '</td>'
                         + '<td><input type="number" class="form-control grade-input"'
                         + ' data-anonymat="' + $('<span>').text(student.anonymat).html() + '"'
-                        + ' min="0" max="20" step="0.25" value="' + g + '" placeholder="0-20"></td>'
+                        + ' min="0" max="20" step="0.01" value="' + g + '" placeholder="0-20"></td>'
                         + '</tr>';
                 });
                 $('#students-tbody').html(tbody);

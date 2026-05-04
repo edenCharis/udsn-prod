@@ -9,6 +9,8 @@ if(!isset($_SESSION['id']) || $_SESSION['role'] != "anonymat") {
     exit;
 }
 
+$userIP = $_SERVER['REMOTE_ADDR'];
+
 $ecue = $_POST['ecue'];
 $classe = $_POST['classe'];
 $semestre = $_POST['semestre'];
@@ -25,34 +27,62 @@ if(empty($selected_students)) {
     exit;
 }
 
-// First, get the TOTAL number of students in this class for this year
+// Pour Session de Rappel : récupérer le code UE de l'ECUE pour filtrer les éligibles
+$rappel_join  = '';
+$rappel_where = '';
+
+if ($examen === 'Session de Rappel') {
+    $res_ue = $connexion->query(
+        "SELECT code_ue FROM ecue WHERE code_ecue='$ecue' AND etab='$etab' LIMIT 1"
+    );
+    if ($res_ue && ($row_ue = $res_ue->fetch_assoc()) && !empty($row_ue['code_ue'])) {
+        $code_ue = $connexion->real_escape_string($row_ue['code_ue']);
+        $rappel_join = "
+            INNER JOIN notation n ON n.inscription = i.id
+                AND n.code_ecue = '$ecue'
+                AND n.semestre  = '$semestre'
+                AND n.annee     = '$annee'
+                AND n.etab      = '$etab'
+            INNER JOIN vue_moyenne_ue vu ON vu.inscription = i.id
+                AND vu.ue       = '$code_ue'
+                AND vu.semestre = '$semestre'
+                AND vu.annee    = '$annee'
+                AND vu.etab     = '$etab'";
+        $rappel_where = "AND (n.moyGen < 6 OR vu.moyenneUE < 10)";
+    }
+}
+
+// Nombre total d'étudiants éligibles (tous pour Session Ordinaire, rattrapage pour Session de Rappel)
 $count_students_sql = "SELECT COUNT(DISTINCT i.id) AS total_students
                        FROM inscription i
-                       WHERE i.etab = '$etab' 
-                       AND i.annee = '$annee'
-                       AND i.classe = '$classe'";
+                       $rappel_join
+                       WHERE i.etab   = '$etab'
+                       AND i.annee    = '$annee'
+                       AND i.classe   = '$classe'
+                       $rappel_where";
 $count_result = $connexion->query($count_students_sql);
 $count_row = $count_result->fetch_assoc();
 $total_students_in_class = $count_row['total_students'];
 
 // Check how many students ALREADY HAVE codes for these criteria
 $check_sql = "SELECT COUNT(*) as count, GROUP_CONCAT(etudiant) as existing_students
-              FROM anonymat 
-              WHERE ecue='$ecue' 
-              AND classe='$classe' 
-              AND semestre='$semestre' 
-              AND type='$examen' 
-              AND nature='$nature' 
-              AND annee='$annee' 
+              FROM anonymat
+              WHERE code_ecue='$ecue'
+              AND classe='$classe'
+              AND semestre='$semestre'
+              AND type='$examen'
+              AND nature='$nature'
+              AND annee='$annee'
               AND etab='$etab'";
 $check_result = $connexion->query($check_sql);
 $row = $check_result->fetch_assoc();
 $existing_count = $row['count'];
 $existing_student_ids = $row['existing_students'] ? explode(',', $row['existing_students']) : [];
 
-// If ALL students in the class already have codes, block the operation
+// If ALL eligible students already have codes, block the operation
 if($existing_count >= $total_students_in_class && $total_students_in_class > 0) {
-    header("location: index?erreur=Tous les étudiants ($total_students_in_class) ont déjà des codes anonymes pour ces critères");
+    $label = ($examen === 'Session de Rappel') ? 'étudiants en rattrapage' : 'étudiants';
+    header("location: index?erreur=Tous les $label ($total_students_in_class) ont déjà des codes anonymes pour ces critères");
     exit;
 }
 
@@ -75,19 +105,20 @@ if(empty($students_to_process)) {
     exit;
 }
 
-// Get ECUE details for specialite
-$sql_ecue = "SELECT specialite FROM ecue e JOIN ue u ON e.code_ue = u.code 
+// Get ECUE details for specialite and libelle
+$sql_ecue = "SELECT specialite, e.libelle FROM ecue e JOIN ue u ON e.code_ue = u.code
              WHERE e.code_ecue = '$ecue' AND e.etab = '$etab'";
 $result_ecue = $connexion->query($sql_ecue);
 $ecue_data = $result_ecue->fetch_assoc();
-$specialite = $ecue_data['specialite'];
+$specialite   = $ecue_data['specialite'];
+$ecue_libelle = $ecue_data['libelle'] ?? $ecue;
 
 // Get existing codes to generate new ones (avoid conflicts)
-$sql_codes = "SELECT numero FROM anonymat 
-              WHERE ecue = '$ecue' 
-              AND classe = '$classe' 
-              AND semestre = '$semestre' 
-              AND type = '$examen' 
+$sql_codes = "SELECT numero FROM anonymat
+              WHERE code_ecue = '$ecue'
+              AND classe = '$classe'
+              AND semestre = '$semestre'
+              AND type = '$examen'
               AND annee = '$annee'
               AND nature = '$nature'
               AND etab = '$etab'";
@@ -114,8 +145,8 @@ $user = $_SESSION["id_user"];
 foreach($students_to_process as $student_id) {
     $anonymous_code = $available_codes[$code_index];
     
-    $sql = "INSERT INTO anonymat (etudiant, ecue, classe, semestre, specialite, numero, type, annee, nature, etab, user) 
-            VALUES ('$student_id', '$ecue', '$classe', '$semestre', '$specialite', '$anonymous_code', '$examen', '$annee', '$nature', '$etab', $user)";
+    $sql = "INSERT INTO anonymat (etudiant, ecue, code_ecue, classe, semestre, specialite, numero, type, annee, nature, etab, user)
+            VALUES ('$student_id', '$ecue_libelle', '$ecue', '$classe', '$semestre', '$specialite', '$anonymous_code', '$examen', '$annee', '$nature', '$etab', $user)";
     
     if($connexion->query($sql)) {
         $success_count++;

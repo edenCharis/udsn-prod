@@ -124,7 +124,6 @@ if( $_SESSION['id'] == session_id()){
 
                             <div class="card-body">
                             <?php
-
                             // ── 1. Récupérer toutes les ECUE du semestre ──────────────────────────────
                             $sql_all_ecue = "SELECT DISTINCT ecue.code_ecue, ecue.libelle
                                              FROM ecue
@@ -306,7 +305,7 @@ if( $_SESSION['id'] == session_id()){
                                 $ecues_inferieures_10
                             );
 
-                            if (!empty($toutes_ecues_rattrapage) && ($a_notes_eliminatoires || $est_ajourn)):
+                            if ($examen_type !== 'rattrapage' && !empty($toutes_ecues_rattrapage) && ($a_notes_eliminatoires || $est_ajourn)):
                             ?>
                             <p class="alert alert-warning">
                                 <b>Revient au rattrapage</b><br>
@@ -366,10 +365,49 @@ if( $_SESSION['id'] == session_id()){
                                                 <?php endif; ?>
                                                 <th>Moyenne ECUE</th>
                                                 <th>Crédit</th>
+                                                <th></th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                         <?php
+
+                                        // ── Pré-chargement devoirs individuels (ligne2) ──
+                                        $devoirs_par_ecue = [];
+                                        $etudiant_int = intval($etudiant);
+                                        $semestre_esc = mysqli_real_escape_string($connexion, $semestre);
+                                        $annee_esc    = mysqli_real_escape_string($connexion, $annee);
+                                        $etab_esc     = mysqli_real_escape_string($connexion, $etablissement);
+                                        $res_dv = $connexion->query(
+                                            "SELECT code_ecue, note FROM ligne2
+                                             WHERE etudiant=$etudiant_int AND semestre='$semestre_esc' AND annee='$annee_esc'
+                                             ORDER BY id ASC"
+                                        );
+                                        if ($res_dv) {
+                                            while ($dv = $res_dv->fetch_assoc()) {
+                                                $devoirs_par_ecue[$dv['code_ecue']][] = $dv['note'];
+                                            }
+                                            $res_dv->free();
+                                        }
+
+                                        // ── Pré-chargement notes examen (ligne1 via anonymat) ──
+                                        $examen_par_ecue = [];
+                                        $res_an = $connexion->query(
+                                            "SELECT a.code_ecue AS code_ecue, a.nature, a.type AS session_type, l.note
+                                             FROM anonymat a
+                                             LEFT JOIN ligne1 l ON l.anonymat=a.numero AND l.code_ecue=a.code_ecue AND l.etab=a.etab
+                                                                AND l.type_examen=IF(a.type='Session Ordinaire','Session Ordinaire','Session de Rappel')
+                                             WHERE a.etudiant=$etudiant_int AND a.semestre='$semestre_esc' AND a.annee='$annee_esc' AND a.etab='$etab_esc'"
+                                        );
+                                        if ($res_an) {
+                                            while ($an = $res_an->fetch_assoc()) {
+                                                $note_v = ($an['note'] !== null) ? round($an['note'], 2) : '-';
+                                                $examen_par_ecue[$an['code_ecue']][$an['session_type']][$an['nature']] = $note_v;
+                                            }
+                                            $res_an->free();
+                                        }
+
+                                        $modals_data  = [];
+                                        $modal_counter = 0;
 
                                         $sql_ue = "SELECT ue.libelle, code
                                                    FROM ue
@@ -394,14 +432,35 @@ if( $_SESSION['id'] == session_id()){
                                                                AND semestre        = '$semestre'
                                                                AND classe          = '$classe'";
                                                 $result_ecue = $connexion->query($sql_ecue);
-                                                $rowspan     = $result_ecue->num_rows > 0
-                                                               ? $result_ecue->num_rows : 1;
+                                                if (!$result_ecue) { echo '<tr><td colspan="11" style="background:#fee;color:red;padding:4px;font-size:11px">ECUE ERROR: '.htmlspecialchars($connexion->error).'</td></tr>'; }
+                                                $rowspan = ($result_ecue && $result_ecue->num_rows > 0)
+                                                           ? $result_ecue->num_rows : 1;
 
-                                                $m = getMoyenneUE(
-                                                    $connexion, $etudiant, $semestre,
-                                                    $annee, $code_ue, $etablissement
-                                                );
-                                                $m = ($m !== "-") ? round($m, 2) : $m;
+                                                // Collecter les données ECUE et calculer Moy UE manuellement
+                                                // (même logique que h.php / pvd/proces.php — cohérence avec le PV)
+                                                $ecue_rows         = [];
+                                                $ecue_moyennes_ue  = [];
+                                                if ($result_ecue) {
+                                                    while ($row_ecue_pre = $result_ecue->fetch_assoc()) {
+                                                        $ce      = $row_ecue_pre['code_ecue'];
+                                                        $cc_pre  = getNoteDevoir($connexion, $etudiant, $semestre, $annee, $ce);
+                                                        if ($examen_type === 'rattrapage') {
+                                                            $ratt_pre = getEtudiantRattrapage($etudiant, $connexion, $etablissement, $semestre, $ce, $annee);
+                                                            $ex_pre   = ($ratt_pre !== "-" && $ratt_pre !== null && $ratt_pre !== "")
+                                                                        ? $ratt_pre
+                                                                        : getNoteExamen($connexion, $etudiant, $semestre, $annee, $ce);
+                                                        } else {
+                                                            $ex_pre = getNoteExamen($connexion, $etudiant, $semestre, $annee, $ce);
+                                                        }
+                                                        if ($cc_pre !== "-" && $ex_pre !== "-") {
+                                                            $ecue_moyennes_ue[] = ($cc_pre + $ex_pre) / 2;
+                                                        }
+                                                        $ecue_rows[] = $row_ecue_pre;
+                                                    }
+                                                }
+                                                $m = (count($ecue_moyennes_ue) > 0)
+                                                     ? round(array_sum($ecue_moyennes_ue) / count($ecue_moyennes_ue), 2)
+                                                     : "-";
 
                                                 echo "<tr>";
                                                 echo "<td rowspan='$rowspan'>$count</td>";
@@ -409,8 +468,8 @@ if( $_SESSION['id'] == session_id()){
                                                 echo "<td rowspan='$rowspan'>" . str_replace("+", "'", $ue_nom) . "</td>";
                                                 echo "<td rowspan='$rowspan'>$m</td>";
 
-                                                if ($result_ecue->num_rows > 0):
-                                                    while ($row_ecue = $result_ecue->fetch_assoc()):
+                                                if (!empty($ecue_rows)):
+                                                    foreach ($ecue_rows as $row_ecue):
 
                                                         $code_ecue_detail = $row_ecue["code_ecue"];
 
@@ -486,17 +545,34 @@ if( $_SESSION['id'] == session_id()){
 
                                                         echo "<td class='$classe_couleur'>$moyenne_ecue</td>";
                                                         echo "<td>" . $row_ecue["credit"] . "</td>";
+
+                                                        // ── Bouton Détails (données collectées, modale rendue après la table) ──
+                                                        $modal_counter++;
+                                                        $mid = 'detailModal' . $modal_counter;
+                                                        echo "<td class='text-center'><button class='btn btn-xs btn-outline-info' data-toggle='modal' data-target='#$mid' title='Voir le détail'><i class='fa fa-search-plus'></i></button></td>";
+
+                                                        $ec_exams = $examen_par_ecue[$code_ecue_detail] ?? [];
+                                                        $modals_data[] = [
+                                                            'mid'        => $mid,
+                                                            'lbl'        => htmlspecialchars(str_replace("+", "'", $row_ecue["libelle"])),
+                                                            'devoirs'    => $devoirs_par_ecue[$code_ecue_detail] ?? [],
+                                                            'th_ord'     => $ec_exams['Session Ordinaire']['Examen Theorique'] ?? '-',
+                                                            'pr_ord'     => $ec_exams['Session Ordinaire']['Examen Pratique']  ?? '-',
+                                                            'th_ratt'    => $ec_exams['Session de Rappel']['Examen Theorique']  ?? '-',
+                                                            'pr_ratt'    => $ec_exams['Session de Rappel']['Examen Pratique']   ?? '-',
+                                                        ];
+
                                                         echo "</tr><tr>";
 
-                                                    endwhile;
+                                                    endforeach;
                                                 else:
-                                                    echo "<td colspan='6'>Aucune ECUE trouvée</td></tr>";
+                                                    echo "<td colspan='7'>Aucune ECUE trouvée</td></tr>";
                                                 endif;
 
                                                 $count++;
                                             endwhile;
                                         else:
-                                            echo "<tr><td colspan='10'>Aucune UE trouvée</td></tr>";
+                                            echo "<tr><td colspan='11'>Aucune UE trouvée</td></tr>";
                                         endif;
                                         ?>
                                         </tbody>
@@ -519,6 +595,56 @@ if( $_SESSION['id'] == session_id()){
         </div>
 
     </div><!-- /#main-wrapper -->
+
+    <?php foreach ($modals_data ?? [] as $md):
+        $fmt = function($v) { return ($v !== '-') ? "<b>$v/20</b>" : '<span class="text-muted">—</span>'; };
+    ?>
+    <div class="modal fade" id="<?php echo $md['mid']; ?>" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header text-white" style="background:#2c3e53;">
+            <h6 class="modal-title"><i class="fa fa-list mr-2"></i><?php echo $md['lbl']; ?></h6>
+            <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+          </div>
+          <div class="modal-body p-3">
+
+            <p class="font-weight-bold mb-1" style="border-left:4px solid #f39c12;padding-left:8px;">Contrôles Continus (CC)</p>
+            <table class="table table-sm table-bordered mb-3">
+              <?php if (empty($md['devoirs'])): ?>
+              <tr><td colspan="2" class="text-center text-muted small">Aucun devoir enregistré</td></tr>
+              <?php else: ?>
+              <?php foreach ($md['devoirs'] as $i => $dn): ?>
+              <tr><td>Devoir <?php echo $i + 1; ?></td><td><b><?php echo round($dn, 2); ?>/20</b></td></tr>
+              <?php endforeach; ?>
+              <tr class="table-warning">
+                <td><b>Moyenne CC</b></td>
+                <td><b><?php echo round(array_sum($md['devoirs']) / count($md['devoirs']), 2); ?>/20</b></td>
+              </tr>
+              <?php endif; ?>
+            </table>
+
+            <p class="font-weight-bold mb-1" style="border-left:4px solid #3498db;padding-left:8px;">Session Ordinaire</p>
+            <table class="table table-sm table-bordered mb-3">
+              <tr><td>Examen Théorique</td><td><?php echo $fmt($md['th_ord']); ?></td></tr>
+              <tr><td>Examen Pratique</td><td><?php echo $fmt($md['pr_ord']); ?></td></tr>
+            </table>
+
+            <?php if ($examen_type === 'rattrapage'): ?>
+            <p class="font-weight-bold mb-1" style="border-left:4px solid #e74c3c;padding-left:8px;">Session de Rattrapage</p>
+            <table class="table table-sm table-bordered mb-0">
+              <tr><td>Examen Théorique</td><td><?php echo $fmt($md['th_ratt']); ?></td></tr>
+              <tr><td>Examen Pratique</td><td><?php echo $fmt($md['pr_ratt']); ?></td></tr>
+            </table>
+            <?php endif; ?>
+
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Fermer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <?php endforeach; ?>
 
     <!-- Modal messages -->
     <div class="modal" id="messageModal" tabindex="-1" role="dialog"

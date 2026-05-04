@@ -13,6 +13,8 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="enseignant"){
 
     if(isset($_GET['sup'])){
         $id = $_GET['sup'];
+
+        $userIP = $_SERVER['REMOTE_ADDR']; // Récupérer l'adresse IP de l'utilisateur
         
         $requete=" select inscription, classe , code_ecue, semestre, annee,etab,user_id from notation where id=?";
         
@@ -157,28 +159,30 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="enseignant"){
 				<div class="row">
 				<?php
 // Fetch dashboard statistics
-$teacher_code = $_SESSION["code_enseignant"];
+$teacher_code = $_SESSION["code_enseignant"] ?? '';
 $user_id = $_SESSION["id_user"];
 
-// Count number of classes
-$sql_classes = "SELECT COUNT(DISTINCT classe) as total_classes FROM repartition_enseignant WHERE code='".$teacher_code."'";
-$result_classes = $connexion->query($sql_classes);
-$total_classes = $result_classes->fetch_assoc()['total_classes'];
+$total_classes = 0;
+$total_students = 0;
+$total_ecues = 0;
+$total_grades = 0;
 
-// Count number of students
-$sql_students = "SELECT COUNT(DISTINCT id) as total_students FROM inscription WHERE classe IN (SELECT classe FROM repartition_enseignant WHERE code='".$teacher_code."') AND annee IN (SELECT annee FROM repartition_enseignant WHERE code='".$teacher_code."')";
-$result_students = $connexion->query($sql_students);
-$total_students = $result_students->fetch_assoc()['total_students'];
+if (!empty($teacher_code)) {
+    $tc = $connexion->real_escape_string($teacher_code);
+    $annee_sess = $connexion->real_escape_string($_SESSION["annee"]);
 
-// Count number of ECUEs
-$sql_ecues = "SELECT COUNT(DISTINCT code_ecue) as total_ecues FROM repartition_enseignant WHERE code='".$teacher_code."'AND annee='".$_SESSION["annee"]."'";
-$result_ecues = $connexion->query($sql_ecues);
-$total_ecues = $result_ecues->fetch_assoc()['total_ecues'];
+    $r = $connexion->query("SELECT COUNT(DISTINCT classe) as v FROM repartition_enseignant WHERE code='$tc'");
+    if ($r) $total_classes = $r->fetch_assoc()['v'];
 
-// Count total grades entered
-$sql_total_grades = "SELECT COUNT(*) as total_grades FROM notation WHERE classe IN (SELECT classe FROM repartition_enseignant WHERE code='".$teacher_code."') AND annee IN (SELECT annee FROM repartition_enseignant WHERE code='".$teacher_code."') AND user_id=".$user_id;
-$result_total_grades = $connexion->query($sql_total_grades);
-$total_grades = $result_total_grades->fetch_assoc()['total_grades'];
+    $r = $connexion->query("SELECT COUNT(DISTINCT i.id) as v FROM inscription i WHERE i.classe IN (SELECT classe FROM repartition_enseignant WHERE code='$tc') AND i.annee IN (SELECT annee FROM repartition_enseignant WHERE code='$tc')");
+    if ($r) $total_students = $r->fetch_assoc()['v'];
+
+    $r = $connexion->query("SELECT COUNT(DISTINCT code_ecue) as v FROM repartition_enseignant WHERE code='$tc' AND annee='$annee_sess'");
+    if ($r) $total_ecues = $r->fetch_assoc()['v'];
+
+    $r = $connexion->query("SELECT COUNT(*) as v FROM notation WHERE classe IN (SELECT classe FROM repartition_enseignant WHERE code='$tc') AND annee IN (SELECT annee FROM repartition_enseignant WHERE code='$tc') AND user_id=$user_id");
+    if ($r) $total_grades = $r->fetch_assoc()['v'];
+}
 ?>
 
 <!-- Dashboard Statistics -->

@@ -38,7 +38,7 @@ $stmt = $connexion->prepare("
     SELECT DISTINCT a.etudiant
     FROM ligne1 l
     JOIN anonymat a ON a.numero    = l.anonymat
-                   AND a.ecue      = l.code_ecue
+                   AND a.code_ecue = l.code_ecue
                    AND a.annee     = l.annee
                    AND a.semestre  = l.semestre
                    AND a.etab      = l.etab
@@ -87,7 +87,7 @@ try {
             , 2) AS moyenne
             FROM ligne1 l
             JOIN anonymat a ON a.numero    = l.anonymat
-                           AND a.ecue      = l.code_ecue
+                           AND a.code_ecue = l.code_ecue
                            AND a.annee     = l.annee
                            and a.type = l.type_examen
                            AND a.semestre  = l.semestre
@@ -127,27 +127,21 @@ try {
 
         if ($checkRow) {
             // ── 3a. UPDATE ────────────────────────────────────────────────
-            $updStmt = $connexion->prepare("
-                UPDATE notation
-                SET $champ  = ?
-                WHERE id = ?
-            ");
+            $updStmt = $connexion->prepare("UPDATE notation SET $champ = ? WHERE id = ?");
             $updStmt->bind_param('di', $avg, $checkRow['id']);
             $updStmt->execute();
             $updStmt->close();
+            $notation_id = $checkRow['id'];
 
         } else {
             // ── 3b. INSERT ────────────────────────────────────────────────
-            // Récupérer libellé ECUE
-            $ecueStmt = $connexion->prepare("
-                SELECT libelle FROM ecue WHERE code_ecue = ? AND etab = ? LIMIT 1
-            ");
+            $ecueStmt = $connexion->prepare("SELECT libelle FROM ecue WHERE code_ecue = ? AND etab = ? LIMIT 1");
             $ecueStmt->bind_param('ss', $ecue, $etab);
             $ecueStmt->execute();
             $ecueLibelle = $ecueStmt->get_result()->fetch_assoc()['libelle'] ?? '';
             $ecueStmt->close();
 
-            $moyEx          = ($type_examen === "Session Ordinaire") ? $avg : null;
+            $moyEx_val      = ($type_examen === "Session Ordinaire") ? $avg : null;
             $session_rappel = ($type_examen === "Session Ordinaire") ? null : $avg;
 
             $insStmt = $connexion->prepare("
@@ -157,21 +151,15 @@ try {
             ");
             $insStmt->bind_param(
                 'issssddssi',
-                $etudiant_id,
-                $classe,
-                $ecueLibelle,
-                $ecue,
-                $annee,
-                $moyEx,
-                $session_rappel,
-                $semestre,
-                $etab,
-                $user_id
+                $etudiant_id, $classe, $ecueLibelle, $ecue, $annee,
+                $moyEx_val, $session_rappel, $semestre, $etab, $user_id
             );
             $insStmt->execute();
             $insStmt->close();
+            $notation_id = (int)$connexion->insert_id;
         }
 
+        // notation.moyDev and moyGen are kept in sync by DB triggers on ligne1/ligne2
         $updated++;
     }
 

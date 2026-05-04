@@ -49,7 +49,6 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="gesnote"){
     <link rel="stylesheet" href="../vendor/select2/css/select2.min.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/skin.css">
-    <link href="../vendor/datatables/css/jquery.dataTables.min.css" rel="stylesheet">
 </head>
 <body>
 
@@ -166,8 +165,9 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="gesnote"){
                                     </div>
                                 </form>
 
+                                <?php if(!empty($_GET['filtre_classe']) || !empty($_GET['filtre_ecue']) || !empty($_GET['filtre_annee'])): ?>
                                 <div class="table-responsive">
-                                    <table id="example3" class="display" style="min-width: 845px">
+                                    <table class="table table-bordered table-striped table-hover" style="min-width: 845px">
                                         <thead>
                                             <tr>
                                                 <th>N°</th>
@@ -263,6 +263,7 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="gesnote"){
                                         </tbody>
                                     </table>
                                 </div>
+                                <?php endif; ?>
 
                             </div>
                         </div>
@@ -412,9 +413,6 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="gesnote"){
     <script src="../js/dashboard/dashboard-2.js"></script>
     <script src="../vendor/svganimation/vivus.min.js"></script>
     <script src="../vendor/svganimation/svg.animation.js"></script>
-    <script src="../vendor/datatables/js/jquery.dataTables.min.js"></script>
-    <script src="../js/plugins-init/datatables.init.js"></script>
-
     <script>
     $(document).ready(function() {
 

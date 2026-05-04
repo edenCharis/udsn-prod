@@ -519,37 +519,36 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="pvd"){
                                                         }
 
                                                         // Couleur de la cellule selon le résultat
+                                                        $class_cc = 'small-column'; // CC toujours en noir
+                                                        $class_ex = 'small-column'; // EX toujours en noir
                                                         if ($has_data && $moy_ecue < 6) {
                                                             $a_note_eliminatoire_ue      = true;
                                                             $a_note_eliminatoire_globale = true;
                                                             $class_cell = 'ecue-eliminatoire';
-                                                            $class_cc   = 'small-column text-danger font-weight-bold';
-                                                            $class_ex   = 'small-column text-danger font-weight-bold';
                                                             $class_moy  = 'small-column text-danger font-weight-bold';
                                                         } elseif ($has_data && $moy_ecue >= 10) {
                                                             $class_cell = 'ecue-acquise';
-                                                            $class_cc   = 'small-column text-success';
-                                                            $class_ex   = 'small-column text-success';
                                                             $class_moy  = 'small-column text-success font-weight-bold';
-                                                        } else {
+                                                        } elseif ($has_data) {
                                                             $class_cell = 'ecue-rattrapage';
-                                                            $class_cc   = 'small-column text-warning font-weight-bold';
-                                                            $class_ex   = 'small-column text-warning font-weight-bold';
                                                             $class_moy  = 'small-column text-warning font-weight-bold';
+                                                        } else {
+                                                            $class_cell = '';
+                                                            $class_moy  = 'small-column';
                                                         }
                                                         ?>
 
-                                                        <th class="<?php echo $class_cc; ?> <?php echo $class_cell; ?>"
+                                                        <th class="<?php echo $class_cc; ?>"
                                                             data-type="ue" data-ue-index="<?php echo $ue_index; ?>">
                                                             <?php echo ($a !== "-" && $a !== null && $a !== "") ? $a : "-"; ?>
                                                         </th>
 
-                                                        <th class="<?php echo $class_ex; ?> <?php echo $class_cell; ?>"
+                                                        <th class="<?php echo $class_ex; ?>"
                                                             data-type="ue" data-ue-index="<?php echo $ue_index; ?>">
                                                             <?php echo ($b !== "-" && $b !== null && $b !== "") ? $b : "-"; ?>
                                                         </th>
 
-                                                        <th class="<?php echo $class_moy; ?> <?php echo $class_cell; ?>"
+                                                        <th class="<?php echo $class_moy; ?>"
                                                             data-type="ue" data-ue-index="<?php echo $ue_index; ?>">
                                                             <?php echo $has_data ? $moy_ecue : "-"; ?>
                                                         </th>
@@ -570,11 +569,8 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="pvd"){
                                                                 // Ajouter à la liste des moyennes UE de l'étudiant
                                                                 $toutes_moyennes_ue[] = $ue_moy;
                                                             }
-                                                            $ue_moy_class = $a_note_eliminatoire_ue
-                                                                ? 'ecue-eliminatoire'
-                                                                : (isset($class_cell) ? $class_cell : '');
                                                     ?>
-                                                        <th class="small-column text-secondary <?php echo $ue_moy_class; ?>"
+                                                        <th class="small-column text-primary"
                                                             data-type="ue" data-ue-index="<?php echo $ue_index; ?>">
                                                             <?php echo $ue_moy; ?>
                                                         </th>
@@ -678,34 +674,12 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="pvd"){
                                                 <?php
                                                 $result_decision = "-";
                                                 if ($tt !== "-") {
-                                                    $statut = "";
-                                                    if ($nb_ue_total >= 1) {
-                                                        $statut = statutSoutenance(round($tt, 2));
-                                                    }
-
-                                                    if ($examen == "rattrapage") {
-                                                        $ecues_elim_ratt = rechercher_notes_eliminatoires_rattrapage(
-                                                            $etudiant->id, $semestre, $annee, $connexion
-                                                        );
-                                                        if (!empty($ecues_elim_ratt)) {
-                                                            $result_decision = "<span class='badge badge-danger'>Note Éliminatoire</span>";
-                                                        } elseif ($a_note_eliminatoire_globale) {
-                                                            $result_decision = "<span class='badge badge-danger'>Note Éliminatoire</span>";
-                                                        } else {
-                                                            $result_decision = $statut;
-                                                        }
+                                                    if ($tt >= 10 && $a_note_eliminatoire_globale) {
+                                                        $result_decision = "<span class='badge badge-danger'>Note Éliminatoire</span>";
+                                                    } elseif ($tt >= 10) {
+                                                        $result_decision = "<span class='badge badge-success'>Validé(e)</span>";
                                                     } else {
-                                                        if ($a_note_eliminatoire_globale) {
-                                                            if (stripos($statut, 'Validé') !== false) {
-                                                                $result_decision = "<span class='badge badge-danger'>Note Éliminatoire</span>";
-                                                            } elseif (stripos($statut, 'Ajourné') !== false || stripos($statut, 'Ajourne') !== false) {
-                                                                $result_decision = $statut;
-                                                            } else {
-                                                                $result_decision = "<span class='badge badge-danger'>Note Éliminatoire</span>";
-                                                            }
-                                                        } else {
-                                                            $result_decision = $statut;
-                                                        }
+                                                        $result_decision = "<span class='badge badge-warning'>Ajourné(e)</span>";
                                                     }
                                                 }
                                                 echo $result_decision;

@@ -3,7 +3,6 @@ include '../php/connexion.php';
 include '../php/lib.php';
 session_start();
 
-// Verify teacher session
 if($_SESSION['id'] != session_id() || $_SESSION['role'] != "enseignant"){
     echo json_encode(['error' => 'Session invalide']);
     exit();
@@ -14,30 +13,42 @@ if(!isset($_POST['classe']) || !isset($_POST['ecue']) || !isset($_POST['semestre
     exit();
 }
 
-$classe = $_POST['classe'];
-$ecue = $_POST['ecue'];
-$semestre = $_POST['semestre'];
-$annee = $_POST['annee'];
-$type_examen = $_POST['type_examen'];
+$classe      = $connexion->real_escape_string($_POST['classe']);
+$ecue        = $connexion->real_escape_string($_POST['ecue']);
+$semestre    = $connexion->real_escape_string($_POST['semestre']);
+$annee       = $connexion->real_escape_string($_POST['annee']);
+$type_examen = $connexion->real_escape_string($_POST['type_examen']);
+$nature      = $connexion->real_escape_string($_POST['nature'] ?? 'Examen Theorique');
+$etab        = $connexion->real_escape_string($_SESSION['etablissement']);
+$code_ens    = $connexion->real_escape_string($_SESSION['code_enseignant'] ?? '');
 
-// Verify teacher has access to this class and ECUE
-$verify_sql = "SELECT COUNT(*) as count FROM repartition_enseignant 
-               WHERE code='".$_SESSION["code_enseignant"]."' 
-               AND classe='$classe' 
-               AND code_ecue='$ecue'";
-$verify_result = $connexion->query($verify_sql);
-$verify_row = $verify_result->fetch_assoc();
-
-if($verify_row['count'] == 0){
-    echo json_encode(['error' => 'Vous n\'avez pas accès à cette classe/ECUE']);
+// Verify teacher has access to this ECUE
+$verify = $connexion->query(
+    "SELECT COUNT(*) AS c FROM repartition_enseignant
+     WHERE code='$code_ens' AND classe='$classe' AND code_ecue='$ecue'"
+);
+if(!$verify || $verify->fetch_assoc()['c'] == 0){
+    echo json_encode(['error' => "Vous n'avez pas accès à cette classe/ECUE"]);
     exit();
 }
 
-// Get all students with anonymat codes for this class and semester
-$sql = "SELECT DISTINCT a.numero as anonymat, a.classe 
-        FROM anonymat a 
-        WHERE a.classe = '$classe' 
-        AND a.semestre = '$semestre'
+// Single query with LEFT JOIN to get existing notes — eliminates N+1
+$sql = "SELECT a.numero AS anonymat, a.classe, l.note AS existing_note
+        FROM anonymat a
+        LEFT JOIN ligne1 l ON l.anonymat   = a.numero
+                          AND l.code_ecue   = a.code_ecue
+                          AND l.type_examen = a.type
+                          AND l.nature      = a.nature
+                          AND l.semestre    = a.semestre
+                          AND l.annee       = a.annee
+                          AND l.etab        = a.etab
+        WHERE a.classe    = '$classe'
+          AND a.semestre  = '$semestre'
+          AND a.annee     = '$annee'
+          AND a.code_ecue = '$ecue'
+          AND a.nature    = '$nature'
+          AND a.type      = '$type_examen'
+          AND a.etab      = '$etab'
         ORDER BY a.numero";
 
 $result = $connexion->query($sql);
@@ -49,33 +60,12 @@ if(!$result){
 
 $students = [];
 while($row = $result->fetch_assoc()){
-    $anonymat = $row['anonymat'];
-    
-    // Check if grade already exists
-    $grade_sql = "SELECT note FROM ligne1 
-                  WHERE anonymat='$anonymat' 
-                  AND code_ecue='$ecue' 
-                  AND type_examen='$type_examen' 
-                  AND annee='$annee'
-                  AND user_id=".$_SESSION['id_user'];
-    
-    $grade_result = $connexion->query($grade_sql);
-    $existing_note = null;
-    
-    if($grade_result && $grade_result->num_rows > 0){
-        $grade_row = $grade_result->fetch_assoc();
-        $existing_note = $grade_row['note'];
-    }
-    
     $students[] = [
-        'anonymat' => $anonymat,
-        'classe' => $row['classe'],
-        'existing_note' => $existing_note
+        'anonymat'      => $row['anonymat'],
+        'classe'        => $row['classe'],
+        'existing_note' => $row['existing_note'],
     ];
 }
 
-echo json_encode([
-    'students' => $students,
-    'count' => count($students)
-]);
+echo json_encode(['students' => $students, 'count' => count($students)]);
 ?>

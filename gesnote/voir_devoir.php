@@ -4,6 +4,8 @@ include '../php/lib.php';
 
 session_start();
 
+$userIP = $_SERVER['REMOTE_ADDR'];
+
 if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="gesnote"){
     $id_notation=null;
 
@@ -35,7 +37,7 @@ if(isset($_GET['semestre']) and isset($_GET['classe']) and isset($_GET['annee'])
             $classe=$_GET['classe'];
             
                 $nouvelleNote=moyenneGeneraleDevoirs($connexion,$etudiant,$ecue,$semestre,$annee);
-                $id_notation =verifierInscriptionNotation($connexion,$etudiant,$ecue,$semestre,$classe,$annee);
+                $id_notation =verifierInscriptionNotation($connexion,$etudiant,$ecue,$semestre,$classe,$annee,$_SESSION['etablissement']);
                if($id_notation !== null){
 
                   if($nouvelleNote !== null)

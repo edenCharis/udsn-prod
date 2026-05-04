@@ -12,7 +12,12 @@ $userIP = $_SERVER['REMOTE_ADDR'];
 
 if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="enseignant"){
  
- $enseignant =  strtoupper(getNomPrenomEnseignant($_SESSION["code_enseignant"], $connexion));
+ $stmt_ens = $connexion->prepare("SELECT nom, prenom FROM enseignant WHERE code=? LIMIT 1");
+ $stmt_ens->bind_param('s', $_SESSION["code_enseignant"]);
+ $stmt_ens->execute();
+ $row_ens = $stmt_ens->get_result()->fetch_assoc();
+ $stmt_ens->close();
+ $enseignant = $row_ens ? strtoupper($row_ens['prenom'] . ' ' . $row_ens['nom']) : '';
  
     
     // Traitement de la soumission des notes AVEC MOYENNES
@@ -64,11 +69,7 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
                     
                     if($stmt_update->execute()) {
                         $succes++;
-                        // ✅ Capturer les messages de debug
-                        $result_notation = mettreAJourNotation($connexion, $etudiant_id, $ecue, $semestre, $classe, $annee, $_SESSION['id_user'],$_SESSION['etablissement']);
-                        if($result_notation) {
-                            $debug_messages[] = $result_notation;
-                        }
+                        mettreAJourNotation($connexion, $etudiant_id, $ecue, $semestre, $classe, $annee, $_SESSION['id_user'], $_SESSION['etablissement']);
                     } else {
                         throw new Exception("Erreur mise à jour étudiant ID: $etudiant_id");
                     }
@@ -104,11 +105,7 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
                     
                     if($stmt_insert->execute()) {
                         $succes++;
-                        // ✅ Capturer les messages de debug
-                        $result_notation = mettreAJourNotation($connexion, $etudiant_id, $ecue, $semestre, $classe, $annee, $_SESSION['id_user'],$_SESSION["etablissement"]);
-                        if($result_notation) {
-                            $debug_messages[] = $result_notation;
-                        }
+                        mettreAJourNotation($connexion, $etudiant_id, $ecue, $semestre, $classe, $annee, $_SESSION['id_user'], $_SESSION['etablissement']);
                         logUserAction($connexion, $_SESSION['id_user'], "ajout d'une note de devoir", date("Y-m-d H:i:s"), $userIP, "étudiant: $etudiant_id, moyenne: $moyenne");
                     } else {
                         throw new Exception("Erreur insertion étudiant ID: $etudiant_id");
@@ -179,7 +176,7 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
         
         // ✅ Recalculer la moyenne après suppression
         $nouvelleNote = moyenneGeneraleDevoirs($connexion, $etudiant, $ecue, $semestre, $annee);
-        $id_notation = verifierInscriptionNotation($connexion, $etudiant, $ecue, $semestre, $classe, $annee);
+        $id_notation = verifierInscriptionNotation($connexion, $etudiant, $ecue, $semestre, $classe, $annee, $_SESSION['etablissement']);
         
         if($id_notation !== null && $id_notation > 0) {
             // ✅ UPDATE avec PREPARED STATEMENT
@@ -217,8 +214,7 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
     $etudiants = [];
     $notes_existantes = [];
     $show_table = false;
-    $show_old_table = true;
-    
+
     // Si tous les critères sont sélectionnés, afficher le tableau de saisie massive
     if(isset($_GET['ecue_bulk']) && isset($_GET['classe_bulk']) && isset($_GET['semestre_bulk']) && isset($_GET['annee_bulk']) && isset($_GET['type_evaluation'])) {
         $ecue = $_GET['ecue_bulk'];
@@ -227,7 +223,6 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
         $annee = $_GET['annee_bulk'];
         $type_evaluation = $_GET['type_evaluation'];
         $show_table = true;
-        $show_old_table = false;
         
         
           if(VerifierSemestre($connexion, $semestre, $annee, $_SESSION['etablissement'])) {
@@ -282,7 +277,6 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
     <link rel="stylesheet" href="../css/style.css">
 	<link rel="stylesheet" href="../css/skin.css">
 	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="../vendor/datatables/css/jquery.dataTables.min.css" rel="stylesheet">
 
 </head>
 <body>
@@ -545,7 +539,7 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
                                                                class="form-control note-input" 
                                                                min="0" 
                                                                max="20" 
-                                                               step="0.25" 
+                                                               step="0.01" 
                                                                value="<?php echo $note_actuelle; ?>"
                                                                placeholder="0.00"
                                                                style="width: 120px;"
@@ -690,75 +684,8 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
                 </div>
                 <?php endif; ?>
 
-                <?php if($show_old_table): ?>
-                <!-- Ancien tableau de consultation -->
-                <div class="row">
-                    <div class="col-lg-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h4 class="card-title">
-                                    <?php if($classe_filter && $annee_filter): ?>
-                                        Classe : <?php echo $classe_filter;?> | Année-Académique : <?php echo $annee_filter;?>
-                                    <?php else: ?>
-                                        Evaluations continues
-                                    <?php endif; ?>
-                                </h4>
-                                <?php if ($_SESSION['statut'] == 1) {?>
-                                    <a href="add-library.html" class="btn btn-primary" data-toggle="modal" data-target="#typeAgentModal">+ Nouveau</a>
-                                <?php } ?>
-                                
-                                
-                                </h4>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table id="example3" class="display" style="min-width: 845px">
-                                        <thead>
-                                            <tr>
-                                                <th>N°</th>
-                                                <th>Etudiant</th>
-                                                <th>Ecue</th>
-                                                <th>Specialité</th>
-                                                <th>Evaluation</th>
-                                                <th>Note</th>
-                                                <th>Semestre</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php 
-                                            $sql = "SELECT * FROM ligne2 WHERE classe IN (SELECT classe FROM repartition_enseignant WHERE code='".$_SESSION["code_enseignant"]."') AND user_id=".$_SESSION["id_user"];
-                                            
-                                            if($classe_filter && $annee_filter) {
-                                                $sql .= " AND classe='$classe_filter' AND annee='$annee_filter'";
-                                            }
-                                            
-                                            $resultat = $connexion->query($sql);
-                                            $count = 1;
-                                            while($ue = $resultat->fetch_assoc()){
-                                            ?>
-                                            <tr heigth="15%">
-                                                <td><?php echo $count;?></td>
-                                                <td><?php echo str_replace("+","'", obtenirNomPrenom(obtenirCodeById($ue['etudiant'],$connexion),$ue['annee'],$connexion));?></td>
-                                                <td><?php echo str_replace("+","'",$ue['ecue']);?></td>
-                                                <td><?php echo $ue['specialite'];?></td>
-                                                <td><?php echo $ue['type'];?></td>
-                                                <td><?php echo $ue['note'];?></td>	
-                                                <td><?php echo $ue['semestre'];?></td>		
-                                                <td>			
-                                                    <a href="notation2?sup=<?php echo $ue['id'];?>&classe=<?php echo $ue['classe']?>&etudiant=<?php echo $ue['etudiant']?>&semestre=<?php echo $ue['semestre']?>&ecue=<?php echo $ue['code_ecue']?>&annee=<?php echo $ue['annee']?>" class="btn btn-sm btn-danger"><i class="la la-trash-o"></i>supprimer</a>
-                                                </td>												
-                                            </tr>
-                                            <?php $count++; }?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-				
+
+
             </div>
         </div>
         <!--**********************************
@@ -782,16 +709,16 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
 
                             <div class="form-group">
                                 <label for="nouveauMoyDev">Moyenne Devoir</label>
-                                <input type="number" min="0" step="0.25" max="20" class="form-control" id="nouveauMoyDev" name="nouveauMoyDev" >
+                                <input type="number" min="0" step="0.01" max="20" class="form-control" id="nouveauMoyDev" name="nouveauMoyDev" >
                             </div>
 
                             <div class="form-group">
                                 <label for="nouveauMoyEx">Moyenne Examen</label>
-                                <input type="number" min="0"  step="0.25" max="20" class="form-control" id="nouveauMoyEx" name="nouveauMoyEx" >
+                                <input type="number" min="0"  step="0.01" max="20" class="form-control" id="nouveauMoyEx" name="nouveauMoyEx" >
                             </div>
                             <div class="form-group">
                                 <label for="sessionrappel">Session de rappel</label>
-                                <input type="number" min="0" step="0.25" max="20" class="form-control" id="sessionrappel" name="nouveausession" >
+                                <input type="number" min="0" step="0.01" max="20" class="form-control" id="sessionrappel" name="nouveausession" >
                             </div>
                             <button type="submit" class="btn btn-success">Sauvegarder</button>
                             <button  class="btn btn-danger">Annuler</button>
@@ -896,7 +823,7 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
 
                             <div class="form-group">
                                 <label for="note">Note </label>
-                                <input type="number" min="0" step="0.25" max="20" class="form-control" id="note" name="note" required>
+                                <input type="number" min="0" step="0.01" max="20" class="form-control" id="note" name="note" required>
                             </div>
                         
                             <div class="input-group mb-3">
@@ -981,9 +908,6 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
     <!-- Svganimation scripts -->
     <script src="../vendor/svganimation/vivus.min.js"></script>
     <script src="../vendor/svganimation/svg.animation.js"></script>
-    <script src="../vendor/datatables/js/jquery.dataTables.min.js"></script>
-    <script src="../js/plugins-init/datatables.init.js"></script>
-    
     <script>
     function imprimerReleveNotes() {
     // Récupérer les paramètres depuis l'URL
@@ -1010,15 +934,13 @@ if($_POST && isset($_POST['sauvegarder_notes'])) {
         return;
     }
     
-    // Récupérer le libellé de l'ECUE depuis le DOM
-    const ecueInfo = document.querySelector('.card-header .float-right small');
+    // Récupérer le libellé de l'ECUE depuis le select
     let libelleEcue = ecue;
-    if (ecueInfo) {
-        const text = ecueInfo.textContent;
-        const match = text.match(/^([^|]+)/);
-        if (match) {
-            libelleEcue = match[1].trim();
-        }
+    const ecueSelect = document.querySelector('select[name="ecue_bulk"]');
+    if (ecueSelect && ecueSelect.selectedIndex > 0) {
+        const optText = ecueSelect.options[ecueSelect.selectedIndex].textContent.trim();
+        const match = optText.match(/^(.+)\[/);
+        if (match) libelleEcue = match[1].trim();
     }
     
     // Préparer les filtres
@@ -1067,116 +989,32 @@ function createPrintContentNotes(notes, filters, libelleEcue, prof) {
         <head>
             <title>Relevé de Notes - Impression</title>
             <style>
-                @page {
-                    size: A4;
-                    margin: 15mm;
-                }
-                body {
-                    font-family: Arial, sans-serif;
-                    margin: 0;
-                    padding: 20px;
-                }
-                .header-univ {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 30px;
-                    padding-bottom: 15px;
-                    border-bottom: 2px solid #333;
-                }
-                .header-left, .header-right {
-                    flex: 1;
-                }
-                .header-center {
-                    text-align: center;
-                    padding: 0 20px;
-                }
-                .header-center img {
-                    max-width: 100px;
-                    height: auto;
-                }
-                .custom-font {
-                    font-weight: bold;
-                    margin: 5px 0;
-                }
-                .header-left h4, .header-right h4 {
-                    font-size: 14px;
-                    margin: 5px 0;
-                }
-                .header-left h5 {
-                    font-size: 12px;
-                    margin: 5px 0;
-                }
-                .header-left p, .header-right p {
-                    font-size: 11px;
-                    margin: 3px 0;
-                }
-                .header-title {
-                    text-align: center;
-                    margin: 20px 0 30px 0;
-                }
-                .header-title h1 {
-                    margin: 0;
-                    font-size: 24px;
-                    color: #333;
-                }
-                .header-title h2 {
-                    margin: 5px 0;
-                    font-size: 18px;
-                    color: #666;
-                }
-                .info-section {
-                    margin-bottom: 20px;
-                    background: #f5f5f5;
-                    padding: 15px;
-                    border-radius: 5px;
-                }
-                .info-section p {
-                    margin: 5px 0;
-                    font-size: 14px;
-                }
-                .info-section strong {
-                    color: #333;
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 20px;
-                }
-                th, td {
-                    border: 1px solid #333;
-                    padding: 10px;
-                    text-align: left;
-                }
-                th {
-                    background-color: #333;
-                    color: white;
-                    font-weight: bold;
-                }
-                tr:nth-child(even) {
-                    background-color: #f9f9f9;
-                }
-                .note-cell {
-                    font-weight: bold;
-                    font-size: 16px;
-                    text-align: center;
-                }
-                .footer {
-                    margin-top: 30px;
-                    text-align: center;
-                    font-size: 12px;
-                    color: #666;
-                    border-top: 1px solid #ccc;
-                    padding-top: 10px;
-                }
-                @media print {
-                    .no-print {
-                        display: none;
-                    }
-                    body {
-                        padding: 0;
-                    }
-                }
+                @page { size: A4; margin: 15mm; }
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                .header-univ { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 15px; }
+                .header-left { flex: 1; text-align: center; }
+                .header-right { flex: 1; text-align: right; }
+                .header-center { text-align: center; padding: 0 20px; }
+                .header-center img { max-width: 100px; height: auto; }
+                .custom-font { font-weight: bold; margin: 5px 0; }
+                .header-left h4, .header-right h4 { font-size: 14px; margin: 5px 0; }
+                .header-left h5 { font-size: 12px; margin: 5px 0; }
+                .header-left p, .header-right p { font-size: 11px; margin: 3px 0; }
+                .header-title { text-align: center; margin: 20px 0 30px 0; }
+                .header-title h1 { margin: 0; font-size: 24px; color: #333; }
+                .header-title h2 { margin: 5px 0; font-size: 18px; color: #666; }
+                .header-title h3 { margin: 5px 0; font-size: 15px; color: #333; font-weight: bold; }
+                .info-section { margin-bottom: 20px; background: #f5f5f5; padding: 15px; border-radius: 5px; }
+                .info-section p { margin: 5px 0; font-size: 14px; }
+                .info-section strong { color: #333; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #333; padding: 5px 8px; text-align: left; }
+                th { background-color: #333; color: white; font-weight: bold; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .note-cell { font-weight: bold; font-size: 14px; text-align: center; }
+                .col-center { text-align: center; }
+                .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ccc; padding-top: 10px; }
+                @media print { .no-print { display: none; } body { padding: 0; } }
             </style>
         </head>
         <body>
@@ -1195,52 +1033,56 @@ function createPrintContentNotes(notes, filters, libelleEcue, prof) {
                     ${filters.type_etablissement === 'faculté' ? '<p class="custom-font">VICE-DÉCANAT</p>' : ''}
                 </div>
             </div>
-            
+
             <div class="header-title">
                 <h1>Relevé de Notes</h1>
                 <h2>${filters.examen}</h2>
             </div>
-            
+
             <div class="info-section">
-                <p><strong>ECUE:</strong> ${libelleEcue}</p>
-                <p><strong>Classe:</strong> ${filters.classe}</p>
-                <p><strong>Semestre:</strong> ${filters.semestre}</p>
-                <p><strong>Type d'évaluation:</strong> ${filters.examen}</p>
-                <p><strong>Année académique:</strong> ${filters.annee}</p>
-                <p><strong>Date d'impression:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
-                <p><strong>Enseignant :</strong> ${prof}</p>
+                <p><strong>ECUE :</strong> ${filters.ecue}</p>
+                <p><strong>Intitulé :</strong> ${libelleEcue}</p>
+                <p><strong>Classe :</strong> ${filters.classe}</p>
+                <p><strong>Semestre :</strong> ${filters.semestre}</p>
+                <p><strong>Type d'évaluation :</strong> ${filters.examen}</p>
+                <p><strong>Année académique :</strong> ${filters.annee}</p>
+                <p><strong>Date d'impression :</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
             </div>
-            
+
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 50px;">N°</th>
-                        <th>Matricule</th>
-                        <th>Nom et Prénom</th>
-                        <th style="width: 120px;">Note (/20)</th>
+                        <th class="col-center" style="width:45px;">N°</th>
+                        <th class="col-center" style="width:110px;">Matricule</th>
+                        <th>Nom(s) et Prénom(s)</th>
+                        <th class="col-center" style="width:90px;">Note/20</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
-    
-    // Add rows
+
     notes.forEach(function(item, index) {
         const note = parseFloat(item.note);
-        
         printContent += `
             <tr>
-                <td style="text-align: center;">${index + 1}</td>
-                <td>${item.matricule || 'N/A'}</td>
+                <td class="col-center">${index + 1}</td>
+                <td class="col-center">${item.matricule || 'N/A'}</td>
                 <td>${item.nom_prenom}</td>
-                <td class="note-cell">${note.toFixed(2)}</td>
+                <td class="note-cell">${isNaN(note) ? '-' : note.toFixed(2)}</td>
             </tr>
         `;
     });
-    
+
     printContent += `
                 </tbody>
             </table>
-            
+
+            <div style="margin-top:40px; text-align:right;">
+                <p style="margin:0; font-size:14px;"><strong>L'Enseignant</strong></p>
+                <div style="height:60px;"></div>
+                <p style="margin:0; font-size:14px;">${prof}</p>
+            </div>
+
             <div class="footer">
                 <p>Document généré le ${new Date().toLocaleString('fr-FR')}</p>
                 <p>UDSN - Système de Gestion Scolaire</p>
@@ -1496,7 +1338,7 @@ function createPrintContentNotes(notes, filters, libelleEcue, prof) {
                        class="form-control note-input" 
                        min="0" 
                        max="20" 
-                       step="0.25" 
+                       step="0.01" 
                        placeholder="0.00"
                        style="width: 120px;"
                        oninput="updateMoyenne(${etudiantId})">
