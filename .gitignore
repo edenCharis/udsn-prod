@@ -1,0 +1,12 @@
+# Environment & credentials — never commit these
+.env
+php/connexion.php
+
+# Uploaded files
+*/photos/
+*/signatures/
+*/photo_etudiant/
+*/doc/
+*/docs/
+inscription/photos/
+scolarite/photo_etudiant/
