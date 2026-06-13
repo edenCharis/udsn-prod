@@ -1,6 +1,6 @@
 # Environment & credentials — never commit these
 .env
-php/connexion.php
+
 
 # Uploaded files
 */photos/
