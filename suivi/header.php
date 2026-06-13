@@ -42,7 +42,13 @@
         <a href="index" class="brand-logo">
         <img class="logo-abbr" src="../administrateur/<?php echo $_SESSION['logo_univ']; ?>" alt="Logo">
     </a>
-    <span class="titre d-none d-md-inline text-white"><?php echo $_SESSION['etablissement']; ?></span>
+    <?php
+    if (!function_exists('getUniversiteNameForHeader')) {
+        include_once __DIR__ . '/../php/lib.php';
+    }
+    $universite_nom = getUniversiteNameForHeader();
+    ?>
+    <span class="titre d-none d-md-inline text-white"><?php echo $universite_nom; ?></span>
 
 
     <div class="nav-control">

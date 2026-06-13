@@ -1793,6 +1793,39 @@ function getlogo($id,$connexion) {
         die("Erreur lors de la requête SQL : " . $connexion->error);
     }
 }
+
+/**
+ * Obtenir le logo par défaut de l'application
+ * Utilisé pour les pages sans authentification
+ * @return string Chemin du logo par défaut
+ */
+function getDefaultLogo() {
+    return 'images/univ.png';
+}
+
+/**
+ * Obtenir le favicon de l'application
+ * @param bool $use_session Utiliser la session si disponible
+ * @return string Chemin du favicon
+ */
+function getFavicon($use_session = false) {
+    if ($use_session && isset($_SESSION['logo_univ']) && !empty($_SESSION['logo_univ'])) {
+        return 'administrateur/' . $_SESSION['logo_univ'];
+    }
+    return getDefaultLogo();
+}
+
+/**
+ * Obtenir le chemin du logo depuis la session
+ * @return string Chemin du logo
+ */
+function getLogoFromSession() {
+    if (isset($_SESSION['logo_univ']) && !empty($_SESSION['logo_univ'])) {
+        return 'administrateur/' . $_SESSION['logo_univ'];
+    }
+    return getDefaultLogo();
+}
+
 function getimguser($id,$connexion) {
 
 
@@ -4918,6 +4951,37 @@ function verifierInscriptionNotation($connexion, $etudiant_id, $ecue, $semestre,
     $stmt->close();
     return null; // ✅ IMPORTANT : Retourner NULL, pas 0 ou false
 }
+
+/**
+ * Fonction helper pour obtenir le nom de l'université personnalisé
+ * Utilise d'abord $_SESSION['nom_univ'], sinon le default
+ * @return string Le nom de l'université
+ */
+function getUniversiteNameForHeader() {
+    // Inclure la configuration des logos
+    if (!function_exists('getLogoConfig')) {
+        include_once __DIR__ . '/../config/logo_config.php';
+    }
+    
+    $universite_nom = "UNIVERSITE DENIS SASSOU-N'GUESSO"; // Valeur par défaut
+    
+    // D'abord, vérifier si nous avons le nom en session
+    if(!empty($_SESSION['nom_univ'])) {
+        $universite_nom = htmlspecialchars($_SESSION['nom_univ']);
+    } else {
+        // Sinon, récupérer le nom par défaut via LogoConfig
+        try {
+            $logoConfig = getLogoConfig();
+            $universite_nom = htmlspecialchars($logoConfig->getDefaultUniversityName());
+        } catch (Exception $e) {
+            // Si une erreur, garder la valeur par défaut
+            $universite_nom = "UNIVERSITE DENIS SASSOU-N'GUESSO";
+        }
+    }
+    
+    return $universite_nom;
+}
+
 
 
 

@@ -1,8 +1,15 @@
 <div class="nav-header">
+<?php
+// Get personalized university name
+if (!function_exists('getUniversiteNameForHeader')) {
+    include_once '../php/lib.php';
+}
+$universite_nom = getUniversiteNameForHeader();
+?>
 <a href="index.html" class="brand-logo">
   
         <img class="logo-abbr" src="../administrateur/<?php echo  $_SESSION['logo_univ']?>" alt="">
-        <?php echo $_SESSION['etablissement'];?>
+        <?php echo $universite_nom;?>
     </a>
 
             <div class="nav-control">

@@ -1,5 +1,10 @@
 <?php
 session_start();
+include_once 'config/logo_config.php';
+$logoConfig = getLogoConfig();
+$logo = $logoConfig->getDefaultLogo();
+$favicon = $logoConfig->getDefaultFavicon();
+$universite_nom = $logoConfig->getDefaultUniversityName();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -7,7 +12,7 @@ session_start();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
 <title>UDSN - Connexion</title>
-<link rel="shortcut icon" href="images/univ.png">
+<link rel="shortcut icon" href="<?php echo htmlspecialchars($favicon); ?>">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;0,900;1,400;1,500;1,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/plugins/bootstrap/css/bootstrap.min.css">
 <link rel="stylesheet" href="assets/plugins/feather/feather.css">
@@ -41,11 +46,11 @@ session_start();
 <div class="container">
 <div class="loginbox">
 <div class="login-left">
-<img class="img-fluid" src="images/univ.png" alt="Logo">
+<img class="img-fluid" src="<?php echo htmlspecialchars($logo); ?>" alt="Logo">
 </div>
 <div class="login-right">
 <div class="login-right-wrap">
-<h1 class="alert alert-success text-center custom-font">UNIVERSITE DENIS SASSOU-N'GUESSO</h1>
+<h1 class="alert alert-success text-center custom-font"><?php echo htmlspecialchars($universite_nom); ?></h1>
 <p class="account-subtitle"></a></p>
 <h2>Connexion </h2>
 <form method="post" class="custom-font" action="php/routeur.php">

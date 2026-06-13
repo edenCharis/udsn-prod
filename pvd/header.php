@@ -2,7 +2,12 @@
 <a href="#" class="brand-logo">
   
         <img class="logo-abbr" src="../administrateur/<?php echo  $_SESSION['logo_univ']?>" alt="">
-        <?php echo $_SESSION['etablissement'];?>
+        <?php
+        if (!function_exists('getUniversiteNameForHeader')) {
+            include_once __DIR__ . '/../php/lib.php';
+        }
+        echo getUniversiteNameForHeader();
+        ?>
     </a>
 
             <div class="nav-control">

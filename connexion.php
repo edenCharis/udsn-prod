@@ -4,8 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
 <title>UDSN - Connexion </title>
-
-<link rel="shortcut icon" href="images/univ.png">
+<?php
+include_once 'config/logo_config.php';
+$logoConfig = getLogoConfig();
+$logo = $logoConfig->getDefaultLogo();
+$favicon = $logoConfig->getDefaultFavicon();
+$universite_nom = $logoConfig->getDefaultUniversityName();
+?>
+<link rel="shortcut icon" href="<?php echo htmlspecialchars($favicon); ?>">
 
 <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;0,900;1,400;1,500;1,700&display=swap" rel="stylesheet">
 
@@ -71,8 +77,8 @@
                         <div class="row no-gutters">
                             <div class="col-xl-12">
                                 <div class="auth-form custom-font">
-                                    <h4 class="text-center mb-4"><img class="logo" width="100px" heigth="50px" src="images/univ.png" alt=""><br></h4>
-                                    <h4 class="alert alert-success custom-font text-center mb-4">UNIVERSITE DENIS SASSOU-N'GUESSO</h4>
+                                    <h4 class="text-center mb-4"><img class="logo" width="100px" heigth="50px" src="<?php echo htmlspecialchars($logo); ?>" alt=""><br></h4>
+                                    <h4 class="alert alert-success custom-font text-center mb-4"><?php echo htmlspecialchars($universite_nom); ?></h4>
                                     <h5 class="text-center mb-4 custom-font">Connectez-vous pour accéder à la plateforme </h5>
                                     <?php
                                     if (isset($_GET['erreur'])) {

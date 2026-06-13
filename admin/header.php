@@ -39,13 +39,24 @@
     }
 </style>
 
+<?php
+// Include logo config for personalized university name
+include_once '../config/logo_config.php';
+$logoConfig = getLogoConfig();
+$universite_nom = $logoConfig->getDefaultUniversityName();
+if(!empty($_SESSION['nom_univ'])) {
+    $universite_nom = htmlspecialchars($_SESSION['nom_univ']);
+}
+$universite_nom = htmlspecialchars($universite_nom);
+?>
+
 <div class="nav-header">
     <a href="#" class="brand-logo">
   
         <img class="logo-abbr" src="../administrateur/<?php echo  $_SESSION['logo_univ']?>" alt="">
        
     </a>
-     <span class="titre d-none d-md-inline text-white">UDSN</span>
+     <span class="titre d-none d-md-inline text-white"><?php echo $universite_nom; ?></span>
 
 
             <div class="nav-control">
