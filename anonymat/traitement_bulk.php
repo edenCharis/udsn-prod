@@ -20,42 +20,58 @@ $nature = $_POST['nature'];
 $etab = $_SESSION['etablissement'];
 
 // Get selected students (if any were unchecked)
+// Si pas de sélection manuelle, on récupère TOUS les étudiants éligibles depuis la BD
 $selected_students = isset($_POST['selected_students']) ? $_POST['selected_students'] : [];
 
 if(empty($selected_students)) {
-    header("location: index?erreur=Aucun étudiant sélectionné");
-    exit;
-}
+    // Session de Rappel : jointures supplémentaires pour filtrer les éligibles
+    $rappel_join_pre  = '';
+    $rappel_where_pre = '';
 
-// Pour Session de Rappel : récupérer le code UE de l'ECUE pour filtrer les éligibles
-$rappel_join  = '';
-$rappel_where = '';
+    if ($examen === 'Session de Rappel') {
+        $res_ue2 = $connexion->query(
+            "SELECT code_ue FROM ecue WHERE code_ecue='$ecue' AND etab='$etab' LIMIT 1"
+        );
+        if ($res_ue2 && ($row_ue2 = $res_ue2->fetch_assoc()) && !empty($row_ue2['code_ue'])) {
+            $code_ue2 = $connexion->real_escape_string($row_ue2['code_ue']);
+            $rappel_join_pre = "
+                INNER JOIN notation n ON n.inscription = i.id
+                    AND n.code_ecue = '$ecue'
+                    AND n.semestre  = '$semestre'
+                    AND n.annee     = '$annee'
+                    AND n.etab      = '$etab'
+                INNER JOIN vue_moyenne_ue vu ON vu.inscription = i.id
+                    AND vu.ue       = '$code_ue2'
+                    AND vu.semestre = '$semestre'
+                    AND vu.annee    = '$annee'
+                    AND vu.etab     = '$etab'";
+            $rappel_where_pre = "AND (n.moyGen < 6 OR vu.moyenneUE < 10)";
+        }
+    }
 
-if ($examen === 'Session de Rappel') {
-    $res_ue = $connexion->query(
-        "SELECT code_ue FROM ecue WHERE code_ecue='$ecue' AND etab='$etab' LIMIT 1"
-    );
-    if ($res_ue && ($row_ue = $res_ue->fetch_assoc()) && !empty($row_ue['code_ue'])) {
-        $code_ue = $connexion->real_escape_string($row_ue['code_ue']);
-        $rappel_join = "
-            INNER JOIN notation n ON n.inscription = i.id
-                AND n.code_ecue = '$ecue'
-                AND n.semestre  = '$semestre'
-                AND n.annee     = '$annee'
-                AND n.etab      = '$etab'
-            INNER JOIN vue_moyenne_ue vu ON vu.inscription = i.id
-                AND vu.ue       = '$code_ue'
-                AND vu.semestre = '$semestre'
-                AND vu.annee    = '$annee'
-                AND vu.etab     = '$etab'";
-        $rappel_where = "AND (n.moyGen < 6 OR vu.moyenneUE < 10)";
+    $sql_all = "SELECT DISTINCT i.id
+                FROM inscription i
+                $rappel_join_pre
+                WHERE i.etab  = '$etab'
+                AND i.annee   = '$annee'
+                AND i.classe  = '$classe'
+                $rappel_where_pre";
+
+    $res_all = $connexion->query($sql_all);
+
+    if (!$res_all || $res_all->num_rows === 0) {
+        header("location: index?erreur=" . urlencode("Aucun étudiant trouvé pour ces critères"));
+        exit;
+    }
+
+    while ($row_all = $res_all->fetch_assoc()) {
+        $selected_students[] = $row_all['id'];
     }
 }
-
 // Nombre total d'étudiants éligibles (tous pour Session Ordinaire, rattrapage pour Session de Rappel)
 $count_students_sql = "SELECT COUNT(DISTINCT i.id) AS total_students
                        FROM inscription i
-                       $rappel_join
+                       $rappel_join_pre
                        WHERE i.etab   = '$etab'
                        AND i.annee    = '$annee'
                        AND i.classe   = '$classe'

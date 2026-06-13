@@ -6,7 +6,7 @@ session_start();
 
 if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="anonymat"){
 
-
+$userIP = $_SERVER['REMOTE_ADDR'];
     if(isset($_GET['sup'])){
         $id = $_GET['sup'];
 
@@ -238,18 +238,18 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="anonymat"){
                                             </div>
                                         </div>
                                         <div class="col-md-8">
-                                            <div class="form-group">
-                                                <label>&nbsp;</label>
-                                                <div>
-                                                    <button type="button" id="previewBtn" class="btn btn-info btn-sm mr-2">
-                                                        <i class="la la-eye"></i> Prévisualiser la liste
-                                                    </button>
-                                                    <button type="button" id="bulkDeleteBtn" class="btn btn-danger btn-sm">
-                                                        <i class="la la-trash-o"></i> Supprimer en masse
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
+    <div class="form-group">
+        <label>&nbsp;</label>
+        <div>
+            <button type="submit" id="generateBtn" class="btn btn-success btn-sm mr-2">
+                <i class="la la-check"></i> Anonymiser directement
+            </button>
+            <button type="button" id="bulkDeleteBtn" class="btn btn-danger btn-sm">
+                <i class="la la-trash-o"></i> Supprimer en masse
+            </button>
+        </div>
+    </div>
+</div>
                                     </div>
 
                                     <div id="ecue_classe_alert" style="display:none;" class="alert alert-danger mb-3">

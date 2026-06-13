@@ -29,7 +29,7 @@ if ($_SESSION['id'] == session_id() && $_SESSION['role'] == "anonymat") {
         // Prepare SQL query
         $sql = "SELECT a.*, a.numero as code_anonyme 
                 FROM anonymat a  join inscription i  on a.etudiant=i.id join candidat c on i.candidat=c.code
-                WHERE a.ecue = ? 
+                WHERE a.code_ecue = ? 
                 AND a.classe = ? 
                 AND a.semestre = ? 
                 AND a.type = ? 

@@ -115,7 +115,6 @@ if( $_SESSION['id'] == session_id() and  $_SESSION['role']=="gesnote"){
                                                 <th>Moyenne Générale</th>
                                                 <th>Année scolaire</th>
                                                 <th>Statut</th>
-                                                
 												<th>Rattrapage</th>
 											</tr>
 										</thead>
